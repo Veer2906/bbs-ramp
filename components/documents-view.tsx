@@ -97,8 +97,8 @@ export function DocumentsView() {
                         <p className="text-[12px] text-zinc-500">{docTypeLabel[d.type]}</p>
                       </td>
                       <td className="px-3 py-2.5 text-zinc-700">{d.vendor}</td>
-                      <td className="tabular px-3 py-2.5 text-zinc-600">{shortDate(d.date)}</td>
-                      <td className="px-3 py-2.5 font-mono text-[12px] text-zinc-500">{d.poNumber ?? "—"}</td>
+                      <td className="tabular px-3 py-2.5 whitespace-nowrap text-zinc-600">{shortDate(d.date)}</td>
+                      <td className="px-3 py-2.5 font-mono text-[12px] whitespace-nowrap text-zinc-500">{d.poNumber ?? "—"}</td>
                       <td className="tabular px-3 py-2.5 text-right font-medium text-zinc-900">{money(d.amount, d.currency)}</td>
                       <td className="px-3 py-2.5">
                         <DocStatus status={d.status} />
