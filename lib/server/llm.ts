@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { AnthropicBedrock, AnthropicBedrockMantle } from "@anthropic-ai/bedrock-sdk";
 import { env } from "./env";
+import { openaiMessages } from "./openai";
 import type { Provider, Settings, Usage } from "../types";
 
 export type MessagesClient = Pick<Anthropic, "messages">;
@@ -17,6 +18,13 @@ export const MODEL_OPTIONS: Record<Provider, { id: string; label: string; hint: 
     { id: "global.anthropic.claude-haiku-4-5-20251001-v1:0", label: "Claude Haiku 4.5", hint: "Bedrock, fastest" },
     { id: "us.anthropic.claude-sonnet-4-5-20250929-v1:0", label: "Claude Sonnet 4.5", hint: "Bedrock, US profile" },
     { id: "anthropic.claude-sonnet-5", label: "Claude Sonnet 5", hint: "Claude in Bedrock (Mantle)" },
+  ],
+  openai: [
+    { id: "gpt-5.4-mini", label: "GPT-5.4 mini", hint: "Fast, cheap" },
+    { id: "gpt-5.4", label: "GPT-5.4", hint: "Balanced" },
+    { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", hint: "Newest" },
+    { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", hint: "Newest" },
+    { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", hint: "Newest" },
   ],
 };
 
@@ -50,6 +58,7 @@ export function providerAvailability() {
   return {
     anthropic: Boolean(env.anthropicKey()),
     bedrock: Boolean(env.bedrockToken()) || env.awsKeys(),
+    openai: Boolean(env.openaiKey()),
   };
 }
 
@@ -66,6 +75,11 @@ export function llmFor(settings: Settings): { client: MessagesClient; model: str
       ? new AnthropicBedrock({ awsRegion, ...(apiKey ? { apiKey } : {}), maxRetries: 3 })
       : new AnthropicBedrockMantle({ awsRegion, ...(apiKey ? { apiKey } : {}), maxRetries: 3 });
     return { client: client as unknown as MessagesClient, model, provider: "bedrock" };
+  }
+  if (settings.provider === "openai") {
+    const key = env.openaiKey();
+    if (!key) throw new Error("OPENAI_API_KEY is not set. Add it to .env.local or pick another model.");
+    return { client: openaiMessages(key, env.openaiBaseUrl()) as unknown as MessagesClient, model: settings.openaiModel, provider: "openai" };
   }
   const apiKey = env.anthropicKey();
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set. Add it to .env.local or switch to Bedrock in settings.");

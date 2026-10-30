@@ -57,7 +57,7 @@ export function Pill({ tone = "neutral", children, className }: { tone?: Tone; c
   return (
     <span
       className={cx(
-        "inline-flex h-[22px] shrink-0 items-center rounded-none px-1.5 font-mono text-[10.5px] font-medium tracking-[0.06em] whitespace-nowrap uppercase",
+        "inline-flex h-[22px] shrink-0 items-center rounded-[4px] px-1.5 font-mono text-[10.5px] font-medium tracking-[0.06em] whitespace-nowrap uppercase",
         TONES[tone],
         className
       )}

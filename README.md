@@ -23,6 +23,7 @@ You need Node.js 22 or newer, a [Sail Research](https://docs.sailresearch.com) A
    | `SAIL_API_KEY` | yes | Runs the agent's browser on a Sailbox (a persistent cloud computer) |
    | `ANTHROPIC_API_KEY` | one of these | Claude through the Anthropic API |
    | `AWS_BEARER_TOKEN_BEDROCK` or `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` | one of these | Claude through AWS Bedrock; also set `AWS_REGION` |
+| `OPENAI_API_KEY` | one of these | GPT models through the OpenAI API |
    | `VAULT_KEY` | recommended | Encrypts saved portal passwords. Any long random string, e.g. `openssl rand -hex 32` |
    | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | optional | Store everything in Supabase instead of `.data/` (see below) |
 
@@ -34,7 +35,7 @@ You need Node.js 22 or newer, a [Sail Research](https://docs.sailresearch.com) A
 
    Open http://localhost:3000. It opens straight into the agent.
 
-4. Pick the model provider in **Settings** (Anthropic or Bedrock) and try a suggestion, e.g. *"Retrieve every October 2026 invoice from all vendor portals and reconcile them against the ledger"*.
+4. Pick a model from the switcher in the chat box (Anthropic, OpenAI or Bedrock) and try a suggestion, e.g. *"Retrieve every October 2026 invoice from all vendor portals and reconcile them against the ledger"*.
 
 The first task provisions the Sailbox and installs Chromium in it, which takes about a minute. After that the box is reused: logins, cookies and downloads persist between tasks.
 

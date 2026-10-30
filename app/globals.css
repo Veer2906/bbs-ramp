@@ -56,12 +56,12 @@
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 
   /* Square corners everywhere, like Mistral's grid. */
-  --radius-xs: 0px;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 14px;
 
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
@@ -116,6 +116,7 @@ select:focus-visible {
 }
 
 .card {
+  border-radius: 10px;
   background: #fffefb;
   box-shadow: 0 0 0 1px var(--color-zinc-200);
 }
@@ -289,6 +290,135 @@ select:focus-visible {
   }
   .odo-digit,
   .press {
+    transition: none;
+  }
+}
+
+/* Chat */
+@keyframes bubble {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.bubble {
+  transform-origin: bottom right;
+  animation: bubble 320ms cubic-bezier(0.2, 0.9, 0.25, 1.1) both;
+}
+.answer {
+  animation: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Inline references to documents, ledger lines, issues and pages. */
+.ref {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 1px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: rgb(28 27 24 / 0.06);
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  line-height: 1.55;
+  color: var(--color-zinc-700);
+  text-decoration: none;
+  transition: background-color 140ms, color 140ms;
+}
+.ref:hover {
+  background: var(--color-moss);
+  color: #eef2ea;
+}
+.ref-web::after {
+  content: "↗";
+  margin-left: 3px;
+  opacity: 0.6;
+}
+
+/* Collapsible computer panel. */
+.computer {
+  width: 420px;
+  overflow: hidden;
+  transition:
+    width 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 260ms;
+}
+@media (min-width: 1280px) {
+  .computer {
+    width: 480px;
+  }
+}
+.computer[data-open="false"] {
+  width: 0;
+  opacity: 0;
+}
+@keyframes frame-in {
+  from {
+    opacity: 0.4;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+.frame-in {
+  animation: frame-in 260ms ease-out both;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.pulse {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pop {
+  transform-origin: bottom left;
+  animation: pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Memory graph */
+@keyframes flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+.flow {
+  stroke-dasharray: 4 4;
+  animation: flow 700ms linear infinite;
+}
+.graph-node circle,
+.graph-node rect {
+  transition:
+    r 180ms,
+    fill 180ms,
+    stroke-width 180ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble,
+  .answer,
+  .pop,
+  .frame-in,
+  .pulse,
+  .flow {
+    animation: none;
+  }
+  .computer {
     transition: none;
   }
 }

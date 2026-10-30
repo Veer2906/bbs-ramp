@@ -7,6 +7,7 @@ import { api } from "@/lib/client/api";
 import { Px } from "../pixel-icon";
 import { useWorkspace } from "../workspace-provider";
 import { Composer } from "./composer";
+import { ModelSwitch } from "./model-switch";
 
 const SUGGESTIONS = [
   "Retrieve every October 2026 invoice from all vendor portals and reconcile them against the ledger",
@@ -49,7 +50,7 @@ export function NewTask() {
           Describe the documents. The agent signs in to your vendor portals, downloads them and reconciles them against your ledger.
         </p>
         <div className="rise mt-7" style={{ animationDelay: "120ms" }}>
-          <Composer large autoFocus value={value} onValueChange={setValue} placeholder="Retrieve every October invoice and reconcile it" onSubmit={start} />
+          <Composer large autoFocus value={value} onValueChange={setValue} placeholder="Retrieve every October invoice and reconcile it" onSubmit={start} tools={<ModelSwitch />} />
           {error ? <p className="mt-2 px-2 text-[12.5px] text-rose-600">{error}</p> : null}
           {s && !providerReady ? (
             <p className="mt-3 px-2 text-[12.5px] text-amber-700">

@@ -21,9 +21,10 @@ export async function PUT(req: Request) {
   try {
     const current = await store.settings();
     const next: Settings = { ...current };
-    if (input.provider === "anthropic" || input.provider === "bedrock") next.provider = input.provider;
+    if (input.provider === "anthropic" || input.provider === "bedrock" || input.provider === "openai") next.provider = input.provider;
     if (typeof input.anthropicModel === "string" && input.anthropicModel.trim()) next.anthropicModel = input.anthropicModel.trim();
     if (typeof input.bedrockModel === "string" && input.bedrockModel.trim()) next.bedrockModel = input.bedrockModel.trim();
+    if (typeof input.openaiModel === "string" && input.openaiModel.trim()) next.openaiModel = input.openaiModel.trim();
     if (typeof input.bedrockRegion === "string" && input.bedrockRegion.trim()) next.bedrockRegion = input.bedrockRegion.trim();
     if (Array.isArray(input.portals)) {
       next.portals = input.portals

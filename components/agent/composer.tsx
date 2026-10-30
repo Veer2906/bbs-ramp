@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cx } from "../ui";
 import { Px } from "../pixel-icon";
 
@@ -13,6 +13,7 @@ export function Composer({
   large,
   value: controlled,
   onValueChange,
+  tools,
 }: {
   placeholder: string;
   onSubmit: (text: string) => Promise<void> | void;
@@ -22,6 +23,7 @@ export function Composer({
   large?: boolean;
   value?: string;
   onValueChange?: (v: string) => void;
+  tools?: ReactNode;
 }) {
   const [local, setLocal] = useState("");
   const value = controlled ?? local;
@@ -51,7 +53,7 @@ export function Composer({
   const stop = busy && onStop && !value.trim();
 
   return (
-    <div className="card flex flex-col gap-1 p-2 pl-4 transition-shadow focus-within:shadow-[0_0_0_1px_rgb(28_27_24/0.35),0_0_0_4px_rgb(228_242_34/0.35),0_12px_32px_-16px_rgb(28_27_24/0.3)]">
+    <div className="card flex flex-col gap-1 !rounded-2xl p-2 pl-4 transition-shadow focus-within:shadow-[0_0_0_1px_rgb(28_27_24/0.35),0_0_0_4px_rgb(228_242_34/0.35),0_12px_32px_-16px_rgb(28_27_24/0.3)]">
       <textarea
         ref={ref}
         rows={1}
@@ -71,9 +73,8 @@ export function Composer({
         )}
       />
       <div className="flex items-center gap-2">
-        <span className="flex-1 font-mono text-[10.5px] tracking-wide text-zinc-400">
-          {stop ? "agent running" : "↵ send   ⇧↵ new line"}
-        </span>
+        {tools}
+        <span className="flex-1 truncate font-mono text-[10.5px] tracking-wide text-zinc-400">{stop ? "working" : "↵ send"}</span>
         {stop ? (
           <button
             onClick={onStop}

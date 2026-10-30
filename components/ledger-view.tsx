@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Px } from "./pixel-icon";
 import { api, docTypeLabel, money, shortDate } from "@/lib/client/api";
 import type { FinancialDocument, LedgerEntry } from "@/lib/types";
@@ -20,7 +21,13 @@ export function LedgerView() {
   const { data, refreshData } = useWorkspace();
   const file = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
-  const [open, setOpen] = useState<string>();
+  const params = useSearchParams();
+  const [open, setOpen] = useState<string | undefined>(params.get("entry") ?? undefined);
+
+  useEffect(() => {
+    const entry = params.get("entry");
+    if (entry) document.getElementById(`entry-${entry}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [params]);
 
   const rows = data.ledger.map((e) => {
     const docs = data.documents.filter((d) => d.ledgerId === e.id && d.status !== "rejected");
@@ -132,7 +139,7 @@ function Row({
   const [label, tone] = STATE[state];
   return (
     <>
-      <tr onClick={toggle} className={cx("cursor-pointer transition-colors ", open ? "bg-zinc-900/[0.04]" : "hover:bg-zinc-900/[0.03]")}>
+      <tr id={`entry-${entry.id}`} onClick={toggle} className={cx("cursor-pointer transition-colors ", open ? "bg-zinc-900/[0.04]" : "hover:bg-zinc-900/[0.03]")}>
         <td className="px-3 py-2.5">
           <p className="font-medium text-zinc-900">{entry.description}</p>
           <p className="text-[12px] text-zinc-400">{entry.id}{entry.reference ? ` · ${entry.reference}` : ""}</p>

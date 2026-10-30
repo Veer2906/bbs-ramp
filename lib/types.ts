@@ -103,19 +103,20 @@ export interface StorageStatus {
   message?: string;
 }
 
-export type Provider = "anthropic" | "bedrock";
+export type Provider = "anthropic" | "bedrock" | "openai";
 
 export interface Settings {
   provider: Provider;
   anthropicModel: string;
   bedrockModel: string;
   bedrockRegion: string;
+  openaiModel: string;
   portals: Portal[];
 }
 
 export type PublicSettings = Omit<Settings, "portals"> & {
   portals: PublicPortal[];
-  available: { anthropic: boolean; bedrock: boolean; sail: boolean };
+  available: { anthropic: boolean; bedrock: boolean; openai: boolean; sail: boolean };
   storage: StorageStatus;
 };
 
