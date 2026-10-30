@@ -18,6 +18,7 @@ export function SettingsView() {
   const [anthropicModel, setAnthropicModel] = useState("");
   const [bedrockModel, setBedrockModel] = useState("");
   const [bedrockRegion, setBedrockRegion] = useState("");
+  const [openaiModel, setOpenaiModel] = useState("");
   const [portals, setPortals] = useState<PortalDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -32,6 +33,7 @@ export function SettingsView() {
     setAnthropicModel(s.anthropicModel);
     setBedrockModel(s.bedrockModel);
     setBedrockRegion(s.bedrockRegion);
+    setOpenaiModel(s.openaiModel);
     setPortals(s.portals.map((p) => ({ ...p, key: p.id })));
   }, [settings]);
 
@@ -51,6 +53,7 @@ export function SettingsView() {
         anthropicModel,
         bedrockModel,
         bedrockRegion,
+        openaiModel,
         portals: portals.map((p) => ({ id: p.id, name: p.name, url: p.url, notes: p.notes })),
       });
       setSettings(next);
@@ -74,7 +77,7 @@ export function SettingsView() {
         }
       />
       <div className="flex max-w-[760px] flex-col gap-8 px-8">
-        <Section title="Model" hint="Claude drives the browser and reads documents. Bedrock runs the same models through your AWS account.">
+        <Section title="Model" hint="The model drives the browser and reads documents. Bedrock runs Claude through your AWS account; OpenAI runs GPT models.">
           <Panel className="flex flex-col gap-5 p-5">
             <div className="flex items-center justify-between gap-4">
               <Segmented<Provider>
@@ -83,6 +86,7 @@ export function SettingsView() {
                 options={[
                   { value: "anthropic", label: "Anthropic API" },
                   { value: "bedrock", label: "AWS Bedrock" },
+                  { value: "openai", label: "OpenAI" },
                 ]}
               />
               <span className={cx("text-[12.5px]", available[provider] ? "text-emerald-700" : "text-amber-700")}>
@@ -90,14 +94,16 @@ export function SettingsView() {
                   ? "Credentials found"
                   : provider === "anthropic"
                     ? "Set ANTHROPIC_API_KEY in .env.local"
-                    : "Set AWS_BEARER_TOKEN_BEDROCK or AWS keys in .env.local"}
+                    : provider === "openai"
+                      ? "Set OPENAI_API_KEY in .env.local"
+                      : "Set AWS_BEARER_TOKEN_BEDROCK or AWS keys in .env.local"}
               </span>
             </div>
             <Field label="Model">
               <ModelPicker
                 options={models[provider]}
-                value={provider === "anthropic" ? anthropicModel : bedrockModel}
-                onChange={provider === "anthropic" ? setAnthropicModel : setBedrockModel}
+                value={provider === "anthropic" ? anthropicModel : provider === "openai" ? openaiModel : bedrockModel}
+                onChange={provider === "anthropic" ? setAnthropicModel : provider === "openai" ? setOpenaiModel : setBedrockModel}
               />
             </Field>
             {provider === "bedrock" ? (

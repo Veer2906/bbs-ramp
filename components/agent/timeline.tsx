@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { Px, type PixelName } from "../pixel-icon";
 import { api, duration } from "@/lib/client/api";
+import { Markdown } from "../markdown";
 import type { Run, RunEvent } from "@/lib/types";
-import { useWorkspace } from "../workspace-provider";
-import { Button, Odometer, Spinner, cx } from "../ui";
+import { Button, Spinner, cx } from "../ui";
 import { EntryForm } from "../vault-view";
 
 type Row = Extract<RunEvent, { kind: "action" | "document" | "match" | "issue" | "status" }>;
@@ -58,6 +58,7 @@ function turns(events: RunEvent[]): Turn[] {
   for (const e of events) {
     if (e.kind === "user" || !out.length) out.push({ key: e.id, user: e.kind === "user" ? e : undefined, trace: [], tail: [] });
     if (e.kind === "user") continue;
+    if (e.kind === "action" && e.tool === "remember") continue;
     const t = out[out.length - 1];
     if (e.kind === "summary" || e.kind === "error") t.tail.push(e);
     else t.trace.push(e);
@@ -140,24 +141,24 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
     case "user":
       return (
         <div className="rise flex justify-end">
-          <div className="max-w-[85%] rounded-none bg-moss px-4 py-2.5 text-[14px] text-[#eef2ea] leading-relaxed whitespace-pre-wrap">{e.text}</div>
+          <div className="bubble max-w-[85%] rounded-2xl rounded-br-md bg-moss px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap text-[#eef2ea]">{e.text}</div>
         </div>
       );
     case "note":
-      return <p className="rise pt-[5px] text-[14px] leading-relaxed whitespace-pre-wrap text-zinc-800">{e.text}</p>;
+      return <Markdown text={e.text} className="rise pt-[5px] text-[14px] leading-relaxed text-zinc-800" />;
     case "credential":
       return <CredentialRequest event={e} runId={run.id} live={live && run.status === "waiting" && !e.outcome} />;
     case "question":
       return <Question event={e} live={live && run.status === "waiting" && !e.answer} onAnswer={onAnswer} />;
     case "error":
       return (
-        <div className="rise rounded-none bg-rose-500/[0.08] px-4 py-3 text-[13.5px] leading-relaxed text-rose-800">
-          <p className="eyebrow !text-rose-700">Run stopped</p>
+        <div className="rise rounded-lg bg-rose-500/[0.08] px-4 py-3 text-[13.5px] leading-relaxed text-rose-800">
+          <p className="eyebrow !text-rose-700">Stopped</p>
           <p className="mt-0.5 text-rose-700">{e.text}</p>
         </div>
       );
     case "summary":
-      return <Summary text={e.text} run={run} />;
+      return <Summary text={e.text} />;
     default:
       return null;
   }
@@ -240,7 +241,7 @@ function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: 
   return (
     <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-moss">
       <p className="eyebrow flex items-center gap-1.5 !text-zinc-600">{live ? <><Spinner /> Waiting for you</> : "Question"}</p>
-      <p className="mt-1 text-[14.5px] leading-relaxed whitespace-pre-wrap text-zinc-900">{event.text}</p>
+      <Markdown text={event.text} className="mt-1 text-[14.5px] leading-relaxed text-zinc-900" />
       {event.answer ? (
         <p className="mt-3 text-[13px] text-zinc-500">You answered: {event.answer}</p>
       ) : live && event.options.length ? (
@@ -329,33 +330,6 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
   );
 }
 
-function Summary({ text, run }: { text: string; run: Run }) {
-  const { data } = useWorkspace();
-  const docs = data.documents.filter((d) => d.runId === run.id);
-  const matched = docs.filter((d) => d.ledgerId).length;
-  const issues = data.issues.filter((i) => i.runId === run.id);
-  const open = issues.filter((i) => i.status === "open").length;
-  return (
-    <div className="rise card p-5">
-      <p className="eyebrow mb-3">Summary</p>
-      <div className="mb-4 grid grid-cols-3 gap-2">
-        <Metric href="/documents" label="Documents" value={docs.length} />
-        <Metric href="/ledger" label="Matched" value={matched} />
-        <Metric href="/issues" label="Open issues" value={open} tone={open ? "amber" : undefined} />
-      </div>
-      <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-zinc-800">{text}</p>
-    </div>
-  );
-}
-
-function Metric({ href, label, value, tone }: { href: string; label: string; value: number; tone?: "amber" }) {
-  return (
-    <Link href={href} className="press group rounded-lg bg-zinc-900/[0.04] px-3 py-3 hover:bg-zinc-900/[0.07]">
-      <Odometer value={String(value).padStart(2, "0")} className={cx("text-[26px] font-semibold tracking-[-0.04em]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
-      <p className="eyebrow mt-2 flex items-center justify-between">
-        {label}
-        <Px name="next" scale={1} className="transition-transform group-hover:translate-x-0.5" />
-      </p>
-    </Link>
-  );
+function Summary({ text }: { text: string }) {
+  return <Markdown text={text} className="answer text-[14.5px] leading-[1.7] text-zinc-800" />;
 }

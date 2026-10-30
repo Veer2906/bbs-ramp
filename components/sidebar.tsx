@@ -29,7 +29,7 @@ function NavLink({ href, active, label, count }: { href: string; active: boolean
     >
       <span className={cx("absolute top-2 bottom-2 left-0 w-[3px]  bg-lime transition-transform duration-200", active ? "scale-y-100" : "scale-y-0")} />
       <span className="flex-1">{label}</span>
-      {count ? <span className="rounded-none bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{count}</span> : null}
+      {count ? <span className="rounded-[4px] bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{count}</span> : null}
     </Link>
   );
 }
@@ -60,7 +60,7 @@ function SidebarInner() {
         )}
       >
         <Px name="plus" scale={1} />
-        <span className="flex-1">New task</span>
+        <span className="flex-1">New chat</span>
         <Px name="next" scale={1} className="opacity-60 transition-transform group-hover:translate-x-0.5" />
       </Link>
 
@@ -71,11 +71,11 @@ function SidebarInner() {
       </nav>
 
       <p className="eyebrow mt-8 mb-2 flex items-center px-3 !text-moss-dim">
-        <span className="flex-1">Tasks</span>
+        <span className="flex-1">Chats</span>
         <span className="text-[#4a5c50]">{runs.length}</span>
       </p>
       <div className="scroll-thin -mx-1 flex-1 overflow-y-auto px-1">
-        {runs.length === 0 ? <p className="px-3 py-2 font-mono text-[11.5px] text-moss-dim">no tasks yet</p> : null}
+        {runs.length === 0 ? <p className="px-3 py-2 font-mono text-[11.5px] text-moss-dim">no chats yet</p> : null}
         {runs.map((r) => {
           const live = ["starting", "running", "waiting"].includes(r.status);
           return (

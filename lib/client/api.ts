@@ -1,4 +1,4 @@
-import type { FinancialDocument, Issue, LedgerEntry, MemoryNode, PublicSettings, PublicVaultEntry, Run, RunSummary, StorageStatus, VaultStatus } from "../types";
+import type { FinancialDocument, Issue, LedgerEntry, MemoryNode, Provider, PublicSettings, PublicVaultEntry, Run, RunSummary, StorageStatus, VaultStatus } from "../types";
 
 export interface ModelOption {
   id: string;
@@ -8,7 +8,7 @@ export interface ModelOption {
 
 export interface SettingsPayload {
   settings: PublicSettings;
-  models: Record<"anthropic" | "bedrock", ModelOption[]>;
+  models: Record<Provider, ModelOption[]>;
 }
 
 export interface DataPayload {

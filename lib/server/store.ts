@@ -14,6 +14,7 @@ const defaultSettings = (): Settings => ({
   anthropicModel: "claude-sonnet-5-5",
   bedrockModel: "global.anthropic.claude-sonnet-4-6",
   bedrockRegion: env.awsRegion(),
+  openaiModel: "gpt-5.4-mini",
   portals: DEMO_PORTALS,
 });
 

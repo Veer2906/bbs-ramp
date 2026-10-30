@@ -15,16 +15,20 @@ export function useRun(runId: string | null) {
   const [frame, setFrame] = useState<Frame>();
   const [error, setError] = useState<string>();
   const lastId = useRef(0);
+  const loaded = useRef<string | null>(null);
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     if (!runId) return;
     let es: EventSource | undefined;
     let cancelled = false;
-    lastId.current = 0;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRun(undefined);
-    setFrame(undefined);
-    setError(undefined);
+    if (loaded.current !== runId) {
+      loaded.current = runId;
+      lastId.current = 0;
+      setRun(undefined);
+      setFrame(undefined);
+      setError(undefined);
+    }
 
     const upsert = (e: RunEvent) =>
       setRun((r) => {
@@ -56,7 +60,7 @@ export function useRun(runId: string | null) {
       cancelled = true;
       es?.close();
     };
-  }, [runId]);
+  }, [runId, nonce]);
 
   useEffect(() => {
     if (!run || !runId) return;
@@ -71,5 +75,8 @@ export function useRun(runId: string | null) {
     return () => clearInterval(t);
   }, [run?.status, runId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { run, frame, error };
+  /** Reconnect after a finished chat was resumed by a new message. */
+  const reload = () => setNonce((n) => n + 1);
+
+  return { run, frame, error, reload };
 }

@@ -51,9 +51,36 @@ export async function startRun(instruction: string): Promise<Run> {
 }
 
 function describeModel(s: Settings) {
-  return s.provider === "bedrock"
-    ? { provider: "bedrock" as const, model: s.bedrockModel }
-    : { provider: "anthropic" as const, model: s.anthropicModel };
+  if (s.provider === "bedrock") return { provider: "bedrock" as const, model: s.bedrockModel };
+  if (s.provider === "openai") return { provider: "openai" as const, model: s.openaiModel };
+  return { provider: "anthropic" as const, model: s.anthropicModel };
+}
+
+const LIVE_STATUS = ["starting", "running", "waiting"];
+
+/** A chat is one task: a message to a finished chat resumes it with the earlier turns as context. */
+export async function continueRun(runId: string, text: string): Promise<Run> {
+  const current = runs.get(runId);
+  if (current && LIVE_STATUS.includes(current.run.status)) {
+    sendMessage(runId, text);
+    return current.run;
+  }
+  if (runs.active()) throw new Error("Another chat is working. Stop it or wait for it to finish.");
+  const run = await runs.load(runId);
+  if (!run) throw new Error("Chat not found");
+  const [settings, vault, memory] = await Promise.all([store.settings(), store.vault(), store.memory()]);
+  if (runs.active()) throw new Error("Another chat is working. Stop it or wait for it to finish.");
+  const earlier = run.events
+    .filter((e) => e.kind === "user" || e.kind === "summary" || e.kind === "error")
+    .map((e) => `${e.kind === "user" ? "User" : "You"}: ${"text" in e ? e.text : ""}`)
+    .join("\n\n");
+  Object.assign(run, { status: "starting", ...describeModel(settings) });
+  const l = runs.register(run);
+  emit(l, { kind: "user", text });
+  persist(l, true);
+  const prompt = `This chat continues an earlier task. Documents, matches and issues from earlier turns are already recorded; build on them instead of redoing work unless asked.\n\nEarlier in this chat:\n${earlier}\n\nThe user now says: ${text}`;
+  void execute(l, { settings, vault, memory }, prompt).catch((e) => fail(l, e));
+  return run;
 }
 
 function titleFrom(text: string) {
@@ -144,7 +171,7 @@ ${portals || "(none configured)"}
 ${others ? `\nOther saved logins in the vault:\n${others}\n` : ""}
 Active memory (facts the finance team wants you to always keep in mind; edited by the user, so trust it over your assumptions):
 ${memoryPrompt(memory)}
-Use these facts when they bear on the task and mention when one changed what you did. When you learn something durable (a key date, an important or disputed invoice, a vendor quirk, a user preference), call remember. Do not re-save facts that are already listed.
+Apply these facts silently. When you learn something durable (a key date, an important or disputed invoice, a vendor quirk, a user preference), call remember; do not re-save facts already listed. Memory works in the background: never mention memory, remembering or memory updates in notes or summaries unless the user asks about memory.
 
 Logins: passwords live in an encrypted vault and you never see them. Type them with fill_credential (vault_id + field). When a page asks for a login that has no vault entry, or a saved login is rejected, call request_credentials right away; it shows the user a secure form and returns a vault_id. Never ask for a password in a message or with ask_human, and never type one with the type tool.
 
@@ -171,10 +198,17 @@ Do not stop to ask about findings; flag them and continue. Use ask_human only wh
 
 Scope: retrieve what the instruction asks for. If it is vague ("get last month's invoices"), choose the sensible interpretation, state it in one line, and proceed. When the task covers ledger transactions, check every one in scope for supporting documents.
 
-Communication: before a group of tool calls write at most one short sentence. Finish with the finish tool: a brief summary with counts (retrieved, matched, issues) and what needs human attention. Do not use markdown headings.`;
+Communication: before a group of tool calls write at most one short sentence. Finish with the finish tool: a brief summary with counts (retrieved, matched, issues) and what needs human attention. Your text is rendered as Markdown: short paragraphs, **bold** for labels and "- " bullet lists; no headings. 
+
+References: back every factual claim (a number, amount, date, status, match or finding) with an inline Markdown link to its source, right after the claim:
+- a recorded document: [INV-10482](doc:<document_id>)
+- a ledger transaction: [L-1002](ledger:<ledger_id>)
+- an issue you flagged: [amount mismatch](issue:<issue_id>)
+- a portal page you read: [Invoice History](<page url>)
+Use the real ids returned by your tools. Never state a figure without its reference.`;
 }
 
-async function execute(l: Live, ctx: Ctx) {
+async function execute(l: Live, ctx: Ctx, prompt?: string) {
   const { settings } = ctx;
   const { client, model } = llmFor(settings);
   const signal = l.abort.signal;
@@ -199,7 +233,7 @@ async function execute(l: Live, ctx: Ctx) {
 
   const system: Anthropic.TextBlockParam[] = [{ type: "text", text: systemPrompt(ctx), cache_control: { type: "ephemeral" } }];
   const tools = TOOLS.map((t, i) => (i === TOOLS.length - 1 ? { ...t, cache_control: { type: "ephemeral" as const } } : t));
-  const messages: Msg[] = [{ role: "user", content: [{ type: "text", text: l.run.instruction }] }];
+  const messages: Msg[] = [{ role: "user", content: [{ type: "text", text: prompt ?? l.run.instruction }] }];
   let nudged = false;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
