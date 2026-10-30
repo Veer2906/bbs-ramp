@@ -39,6 +39,7 @@ export function DocumentsView() {
     <div className="flex h-full min-h-0">
       <div className="scroll-thin min-w-0 flex-1 overflow-y-auto pb-10">
         <PageHeader
+          index="01"
           title="Documents"
           subtitle={data.documents.length ? `${data.documents.length} retrieved · ${money(total)} invoiced in view` : "Everything the agent retrieves lands here"}
         />
@@ -76,7 +77,7 @@ export function DocumentsView() {
             ) : (
               <table className="w-full text-left text-[13px]">
                 <thead>
-                  <tr className="text-[12px] text-zinc-400">
+                  <tr className="eyebrow">
                     <th className="px-3 py-2 font-medium">Document</th>
                     <th className="px-3 py-2 font-medium">Vendor</th>
                     <th className="px-3 py-2 font-medium">Date</th>
@@ -144,7 +145,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
   ];
 
   return (
-    <aside className="rise flex w-[520px] shrink-0 flex-col bg-white shadow-[-1px_0_0_rgba(24,24,27,0.06),-24px_0_48px_-32px_rgba(24,24,27,0.25)]">
+    <aside className="rise flex w-[520px] shrink-0 flex-col bg-[#fffefb] shadow-[-1px_0_0_rgba(28,27,24,0.07),-24px_0_48px_-32px_rgba(28,27,24,0.3)]">
       <div className="flex items-start gap-3 px-6 pt-6 pb-4">
         <div className="min-w-0 flex-1">
           <p className="text-[12px] text-zinc-500">{doc.vendor}</p>
@@ -161,14 +162,14 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         <div className="grid grid-cols-3 gap-x-4 gap-y-3">
           {fields.map(([k, v]) => (
             <div key={k} className="min-w-0">
-              <p className="text-[11.5px] text-zinc-400">{k}</p>
+              <p className="eyebrow">{k}</p>
               <p className="truncate text-[13px] text-zinc-800">{v}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-5 rounded-xl bg-zinc-900/[0.035] p-3.5">
-          <p className="text-[11.5px] text-zinc-400">Ledger match</p>
+        <div className="mt-5 rounded-lg bg-zinc-900/[0.035] p-3.5">
+          <p className="eyebrow">Ledger match</p>
           {entry ? (
             <div className="mt-1 flex items-baseline justify-between gap-3">
               <p className="text-[13px] text-zinc-800">
@@ -185,7 +186,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         {issues.length ? (
           <div className="mt-3 flex flex-col gap-2">
             {issues.map((i) => (
-              <div key={i.id} className="rounded-xl bg-amber-500/[0.08] p-3.5">
+              <div key={i.id} className="rounded-lg bg-amber-500/[0.08] p-3.5">
                 <p className="text-[13px] font-medium text-amber-900">{i.title}</p>
                 <p className="mt-0.5 text-[12.5px] leading-relaxed text-amber-800/80">{i.detail}</p>
               </div>
@@ -195,7 +196,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
 
         {doc.lineItems.length ? (
           <div className="mt-5">
-            <p className="mb-1.5 text-[11.5px] text-zinc-400">Line items</p>
+            <p className="eyebrow mb-1.5">Line items</p>
             <table className="w-full text-[12.5px]">
               <tbody>
                 {doc.lineItems.map((li, i) => (
@@ -213,7 +214,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         {doc.notes ? <p className="mt-4 text-[12.5px] leading-relaxed text-zinc-500">{doc.notes}</p> : null}
 
         {doc.fileName ? (
-          <div className="mt-5 overflow-hidden rounded-xl bg-zinc-100">
+          <div className="mt-5 overflow-hidden rounded-lg bg-zinc-100">
             {isPdf ? (
               <iframe src={`/api/files/${doc.id}#toolbar=0&navpanes=0&view=FitH`} className="h-[520px] w-full" title={doc.number} />
             ) : isImage ? (
@@ -236,7 +237,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         </Button>
         <span className="flex-1" />
         {doc.fileName ? (
-          <a href={`/api/files/${doc.id}?download`} className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[13.5px] font-medium text-zinc-600 hover:bg-zinc-900/5 hover:text-zinc-900">
+          <a href={`/api/files/${doc.id}?download`} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13.5px] font-medium text-zinc-600 hover:bg-zinc-900/5 hover:text-zinc-900">
             <Download className="size-3.5" />
             Download
           </a>

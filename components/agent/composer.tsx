@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowUp, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cx } from "../ui";
 
@@ -48,12 +47,10 @@ export function Composer({
     }
   };
 
+  const stop = busy && onStop && !value.trim();
+
   return (
-    <div
-      className={cx(
-        "flex items-end gap-2 rounded-[22px] bg-white p-2 pl-4 shadow-[0_0_0_1px_rgba(24,24,27,0.07),0_8px_24px_-12px_rgba(24,24,27,0.18)] transition-shadow focus-within:shadow-[0_0_0_1px_rgba(24,24,27,0.18),0_8px_28px_-12px_rgba(24,24,27,0.25)]"
-      )}
-    >
+    <div className="card flex flex-col gap-1 p-2 pl-4 transition-shadow focus-within:shadow-[0_0_0_1px_rgb(28_27_24/0.35),0_0_0_4px_rgb(228_242_34/0.35),0_12px_32px_-16px_rgb(28_27_24/0.3)]">
       <textarea
         ref={ref}
         rows={1}
@@ -68,28 +65,35 @@ export function Composer({
         }}
         placeholder={placeholder}
         className={cx(
-          "scroll-thin flex-1 resize-none bg-transparent py-2 leading-relaxed text-zinc-900 outline-none placeholder:text-zinc-400",
-          large ? "min-h-[64px] text-[15px]" : "text-[14px]"
+          "scroll-thin resize-none bg-transparent pt-2 leading-relaxed text-zinc-900 outline-none placeholder:text-zinc-400",
+          large ? "min-h-[72px] text-[15.5px]" : "text-[14px]"
         )}
       />
-      {busy && onStop && !value.trim() ? (
-        <button
-          onClick={onStop}
-          title="Stop"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white transition-colors hover:bg-zinc-700"
-        >
-          <Square className="size-3.5 fill-current" />
-        </button>
-      ) : (
-        <button
-          onClick={() => void submit()}
-          disabled={!value.trim() || sending}
-          title="Send"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white transition-colors hover:bg-zinc-700 disabled:bg-zinc-200 disabled:text-zinc-400"
-        >
-          <ArrowUp className="size-4" />
-        </button>
-      )}
+      <div className="flex items-center gap-2">
+        <span className="flex-1 font-mono text-[10.5px] tracking-wide text-zinc-400">
+          {stop ? "agent running" : "↵ send   ⇧↵ new line"}
+        </span>
+        {stop ? (
+          <button
+            onClick={onStop}
+            title="Stop"
+            className="press flex h-8 items-center gap-2 rounded-lg bg-zinc-900 px-3 font-mono text-[11px] tracking-wider text-zinc-50 uppercase hover:bg-zinc-800"
+          >
+            <span className="size-2 bg-zinc-50" />
+            Stop
+          </button>
+        ) : (
+          <button
+            onClick={() => void submit()}
+            disabled={!value.trim() || sending}
+            title="Send"
+            className="press flex h-8 items-center gap-2 rounded-lg bg-zinc-900 px-3 font-mono text-[11px] tracking-wider text-zinc-50 uppercase hover:bg-lime hover:text-zinc-900 disabled:bg-zinc-900/[0.07] disabled:text-zinc-400"
+          >
+            {sending ? "Sending" : "Run"}
+            <span aria-hidden>→</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }

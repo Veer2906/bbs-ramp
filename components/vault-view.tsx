@@ -31,6 +31,7 @@ export function VaultView() {
   return (
     <div className="scroll-thin h-full overflow-y-auto pb-16">
       <PageHeader
+        index="04"
         title="Vault"
         subtitle="Logins the agent signs in with. Passwords are encrypted before they are stored, and the agent types them without ever seeing them."
         actions={
@@ -76,8 +77,8 @@ export function VaultView() {
             />
           ) : (
             <Panel key={e.id} className="flex items-center gap-4 px-5 py-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900/[0.05]">
-                <KeyRound className="size-4 text-zinc-500" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900/[0.055] font-mono text-[12px] text-zinc-500">
+                <KeyRound className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-medium text-zinc-900">{e.name}</p>
@@ -86,7 +87,7 @@ export function VaultView() {
                   {e.url ? <span className="text-zinc-400">{`  ·  ${e.url.replace(/^https?:\/\//, "")}`}</span> : null}
                 </p>
               </div>
-              <span className="hidden text-[12px] text-zinc-400 sm:block">{e.lastUsedAt ? `Used ${ago(e.lastUsedAt)}` : "Not used yet"}</span>
+              <span className="hidden font-mono text-[10.5px] tracking-wide text-zinc-400 uppercase sm:block">{e.lastUsedAt ? `Used ${ago(e.lastUsedAt)}` : "Not used yet"}</span>
               {!e.hasPassword && <Pill tone="amber">No password</Pill>}
               <Button size="sm" variant="ghost" onClick={() => setEditing(e.id)}>
                 Edit
@@ -104,13 +105,13 @@ function StatusLine({ status }: { status: VaultStatus }) {
   const key = status.keySource === "env" ? "key from VAULT_KEY" : "key generated in .data/vault.key";
   return (
     <div className="mb-2 flex flex-col gap-1">
-      <p className="text-[12.5px] text-zinc-500">{`${status.cipher} encryption, ${key}. ${where}.`}</p>
+      <p className="font-mono text-[11px] tracking-wide text-zinc-500">{`${status.cipher} · ${key} · ${where.toLowerCase()}`}</p>
       {!status.keyOk ? (
-        <p className="rounded-xl bg-rose-500/[0.07] px-3 py-2 text-[12.5px] text-rose-800">
+        <p className="rounded-lg bg-rose-500/[0.07] px-3 py-2 text-[12.5px] text-rose-800">
           The current key cannot decrypt the saved passwords. Set VAULT_KEY to the key they were saved with, or re-enter the passwords.
         </p>
       ) : status.keySource === "file" && status.storage === "supabase" ? (
-        <p className="rounded-xl bg-amber-500/[0.08] px-3 py-2 text-[12.5px] text-amber-900">
+        <p className="rounded-lg bg-amber-500/[0.08] px-3 py-2 text-[12.5px] text-amber-900">
           Passwords are in Supabase but the key only exists on this computer. Copy .data/vault.key into VAULT_KEY in .env.local so other machines can use the vault.
         </p>
       ) : null}
@@ -201,7 +202,7 @@ export function EntryForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12px] font-medium text-zinc-500">{label}</span>
+      <span className="eyebrow">{label}</span>
       {children}
     </label>
   );
