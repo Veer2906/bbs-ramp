@@ -66,6 +66,7 @@ export function SettingsView() {
   return (
     <div className="scroll-thin h-full overflow-y-auto pb-16">
       <PageHeader
+        index="//"
         title="Settings"
         actions={
           <Button variant="primary" loading={saving} onClick={() => void save()}>
@@ -127,7 +128,7 @@ export function SettingsView() {
                   <Link
                     href="/vault"
                     className={cx(
-                      "flex h-9 shrink-0 items-center rounded-xl px-3 text-[12.5px] font-medium transition-colors",
+                      "flex h-9 shrink-0 items-center rounded-lg px-3 text-[12.5px] font-medium transition-colors",
                       p.vaultId ? "bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15" : "bg-amber-500/12 text-amber-900 hover:bg-amber-500/20"
                     )}
                   >
@@ -218,8 +219,8 @@ function ModelPicker({ options, value, onChange }: { options: { id: string; labe
             key={o.id}
             onClick={() => onChange(o.id)}
             className={cx(
-              "rounded-xl px-3.5 py-2.5 text-left transition-all",
-              o.id === value ? "bg-zinc-900 text-white" : "bg-zinc-900/[0.04] text-zinc-800 hover:bg-zinc-900/[0.07]"
+              "press rounded-lg px-3.5 py-2.5 text-left",
+              o.id === value ? "bg-zinc-900 text-zinc-50" : "bg-zinc-900/[0.04] text-zinc-800 hover:bg-zinc-900/[0.07]"
             )}
           >
             <p className="text-[13px] font-medium">{o.label}</p>
@@ -236,7 +237,7 @@ function ModelPicker({ options, value, onChange }: { options: { id: string; labe
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col">
-      <h2 className="text-[15px] font-semibold tracking-tight text-zinc-900">{title}</h2>
+      <h2 className="font-serif text-[22px] tracking-tight text-zinc-900">{title}</h2>
       {hint ? <p className="mt-0.5 mb-3 text-[13px] text-zinc-500">{hint}</p> : <div className="mb-3" />}
       {children}
     </section>
@@ -246,7 +247,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12px] font-medium text-zinc-500">{label}</span>
+      <span className="eyebrow">{label}</span>
       {children}
     </label>
   );

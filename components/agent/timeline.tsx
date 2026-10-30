@@ -14,7 +14,6 @@ import {
   KeyRound,
   Link2,
   ListChecks,
-  Loader2,
   MousePointerClick,
   Keyboard,
   Camera,
@@ -24,7 +23,7 @@ import {
 import { api } from "@/lib/client/api";
 import type { Run, RunEvent } from "@/lib/types";
 import { useWorkspace } from "../workspace-provider";
-import { Button, cx } from "../ui";
+import { Button, Odometer, Spinner, cx } from "../ui";
 import { EntryForm } from "../vault-view";
 
 type Row = Extract<RunEvent, { kind: "action" | "document" | "match" | "issue" | "status" }>;
@@ -80,7 +79,11 @@ export function Timeline({ run, live, onAnswer }: { run: Run; live: boolean; onA
         )
       )}
       {live && items[items.length - 1]?.kind !== "group" && run.status !== "waiting" ? (
-        <p className="shimmer-text rise text-[13.5px] font-medium">Thinking</p>
+        <p className="rise flex items-center gap-2 font-mono text-[11.5px] tracking-wide text-zinc-500 uppercase">
+          <Spinner className="text-zinc-700" />
+          <span className="shimmer-text">Thinking</span>
+          <span className="caret text-zinc-700">▍</span>
+        </p>
       ) : null}
     </div>
   );
@@ -91,7 +94,7 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
     case "user":
       return (
         <div className="rise flex justify-end">
-          <div className="max-w-[85%] rounded-[20px] bg-zinc-900/[0.055] px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap text-zinc-900">{e.text}</div>
+          <div className="max-w-[85%] rounded-[10px] rounded-br-[3px] bg-zinc-900 px-4 py-2.5 text-[14px] text-zinc-50 leading-relaxed whitespace-pre-wrap">{e.text}</div>
         </div>
       );
     case "note":
@@ -102,8 +105,8 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
       return <Question event={e} live={live && run.status === "waiting" && !e.answer} onAnswer={onAnswer} />;
     case "error":
       return (
-        <div className="rise rounded-2xl bg-rose-500/[0.07] px-4 py-3 text-[13.5px] leading-relaxed text-rose-800">
-          <p className="font-medium">The run stopped</p>
+        <div className="rise rounded-[10px] bg-rose-500/[0.08] px-4 py-3 text-[13.5px] leading-relaxed text-rose-800">
+          <p className="eyebrow !text-rose-700">Run stopped</p>
           <p className="mt-0.5 text-rose-700">{e.text}</p>
         </div>
       );
@@ -146,7 +149,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
   if (row.kind === "status") {
     return (
       <div className="flex h-8 items-center gap-2.5 px-1 text-[13px] text-zinc-500">
-        <Loader2 className={cx("size-3.5", running || row.text ? "animate-spin" : "")} />
+        <Spinner className="w-3.5 text-[12px] text-zinc-500" />
         <span className={running ? "shimmer-text" : ""}>{row.text}</span>
       </div>
     );
@@ -158,7 +161,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
       <Link
         href={href}
         className={cx(
-          "my-0.5 flex min-h-9 items-center gap-2.5 rounded-xl px-3 py-1.5 text-[13px] transition-colors",
+          "press my-0.5 flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px]",
           row.kind === "issue"
             ? "bg-amber-500/[0.08] text-amber-900 hover:bg-amber-500/[0.13]"
             : row.kind === "match"
@@ -168,6 +171,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
       >
         <Icon className="size-3.5 shrink-0 opacity-70" />
         <span className="min-w-0 flex-1 truncate">{row.label}</span>
+        <span className="font-mono text-[10px] tracking-wider uppercase opacity-50">{row.kind === "document" ? "doc" : row.kind}</span>
       </Link>
     );
   }
@@ -175,7 +179,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
   return (
     <div className="group flex min-h-8 items-center gap-2.5 px-1 text-[13px]">
       {running ? (
-        <Loader2 className="size-3.5 shrink-0 animate-spin text-zinc-500" />
+        <Spinner className="w-3.5 text-[12px] text-zinc-700" />
       ) : row.ok === false ? (
         <X className="size-3.5 shrink-0 text-rose-500" />
       ) : (
@@ -184,7 +188,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
       <span className={cx("min-w-0 truncate", running ? "shimmer-text font-medium" : row.ok === false ? "text-rose-700" : "text-zinc-600")}>{row.label}</span>
       {row.ok === false && row.detail ? <span className="min-w-0 flex-1 truncate text-[12px] text-rose-500/80">{row.detail}</span> : <span className="flex-1" />}
       {row.ms !== undefined && row.ms >= 50 ? (
-        <span className="tabular shrink-0 text-[11.5px] text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100">{(row.ms / 1000).toFixed(1)}s</span>
+        <span className="tabular shrink-0 font-mono text-[10.5px] text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100">{(row.ms / 1000).toFixed(1)}s</span>
       ) : null}
     </div>
   );
@@ -192,8 +196,8 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
 
 function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: "question" }>; live: boolean; onAnswer: (t: string) => void }) {
   return (
-    <div className="rise rounded-2xl bg-white p-4 shadow-[0_0_0_1px_rgba(217,119,6,0.25),0_8px_24px_-16px_rgba(217,119,6,0.5)]">
-      <p className="text-[12px] font-medium text-amber-700">{live ? "Waiting for you" : "Question"}</p>
+    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-lime-deep">
+      <p className="eyebrow flex items-center gap-1.5 !text-zinc-600">{live ? <><Spinner /> Waiting for you</> : "Question"}</p>
       <p className="mt-1 text-[14.5px] leading-relaxed whitespace-pre-wrap text-zinc-900">{event.text}</p>
       {event.answer ? (
         <p className="mt-3 text-[13px] text-zinc-500">You answered: {event.answer}</p>
@@ -203,14 +207,14 @@ function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: 
             <button
               key={o}
               onClick={() => onAnswer(o)}
-              className="rounded-xl bg-zinc-900/[0.05] px-3 py-1.5 text-left text-[13px] font-medium text-zinc-800 transition-colors hover:bg-zinc-900 hover:text-white"
+              className="press rounded-lg bg-zinc-900/[0.055] px-3 py-1.5 text-left text-[13px] font-medium text-zinc-800 hover:bg-zinc-900 hover:text-zinc-50"
             >
               {o}
             </button>
           ))}
         </div>
       ) : live ? (
-        <p className="mt-3 text-[12.5px] text-zinc-500">Reply below</p>
+        <p className="mt-3 font-mono text-[10.5px] tracking-wide text-zinc-400 uppercase">Reply below ↓</p>
       ) : null}
     </div>
   );
@@ -221,7 +225,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
   const [error, setError] = useState<string>();
   if (!live) {
     return (
-      <div className="rise flex min-h-9 items-center gap-2.5 rounded-xl bg-zinc-900/[0.035] px-3 py-1.5 text-[13px] text-zinc-700">
+      <div className="rise flex min-h-9 items-center gap-2.5 rounded-lg bg-zinc-900/[0.04] px-3 py-1.5 text-[13px] text-zinc-700">
         <KeyRound className="size-3.5 shrink-0 opacity-70" />
         <span className="min-w-0 flex-1 truncate">
           {event.outcome === "saved"
@@ -239,13 +243,13 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
     );
   }
   return (
-    <div className="rise rounded-2xl bg-white p-4 shadow-[0_0_0_1px_rgba(217,119,6,0.25),0_8px_24px_-16px_rgba(217,119,6,0.5)]">
+    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-lime-deep">
       <div className="flex items-start gap-3 px-1">
-        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/12">
-          <KeyRound className="size-4 text-amber-800" />
+        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-lime">
+          <KeyRound className="size-4 text-zinc-900" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-medium text-amber-700">Login needed</p>
+          <p className="eyebrow flex items-center gap-1.5 !text-zinc-600"><Spinner /> Login needed</p>
           <p className="mt-0.5 text-[14.5px] leading-relaxed text-zinc-900">{`Add the login for ${event.site} to the vault`}</p>
           {event.reason ? <p className="mt-0.5 text-[13px] text-zinc-500">{event.reason}</p> : null}
         </div>
@@ -261,7 +265,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
         />
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <p className="flex-1 text-[12px] text-zinc-400">Encrypted before it is stored. The agent never sees the password.</p>
+        <p className="flex-1 font-mono text-[10.5px] tracking-wide text-zinc-400">AES-256-GCM. The agent never sees the password.</p>
         {error ? <span className="text-[12px] text-rose-600">{error}</span> : null}
         <Button
           size="sm"
@@ -292,8 +296,9 @@ function Summary({ text, run }: { text: string; run: Run }) {
   const issues = data.issues.filter((i) => i.runId === run.id);
   const open = issues.filter((i) => i.status === "open").length;
   return (
-    <div className="rise rounded-2xl bg-white p-5 shadow-[0_0_0_1px_rgba(24,24,27,0.05),0_1px_2px_rgba(24,24,27,0.04)]">
-      <div className="mb-4 grid grid-cols-3 gap-3">
+    <div className="rise card p-5">
+      <p className="eyebrow mb-3">Summary</p>
+      <div className="mb-4 grid grid-cols-3 gap-2">
         <Metric href="/documents" label="Documents" value={docs.length} />
         <Metric href="/ledger" label="Matched" value={matched} />
         <Metric href="/issues" label="Open issues" value={open} tone={open ? "amber" : undefined} />
@@ -305,9 +310,12 @@ function Summary({ text, run }: { text: string; run: Run }) {
 
 function Metric({ href, label, value, tone }: { href: string; label: string; value: number; tone?: "amber" }) {
   return (
-    <Link href={href} className="rounded-xl bg-zinc-900/[0.035] px-3 py-2.5 transition-colors hover:bg-zinc-900/[0.06]">
-      <p className={cx("tabular text-[20px] font-semibold tracking-tight", tone === "amber" ? "text-amber-700" : "text-zinc-900")}>{value}</p>
-      <p className="text-[12px] text-zinc-500">{label}</p>
+    <Link href={href} className="press group rounded-lg bg-zinc-900/[0.04] px-3 py-3 hover:bg-zinc-900/[0.07]">
+      <Odometer value={String(value).padStart(2, "0")} className={cx("font-serif text-[30px] tracking-tight", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
+      <p className="eyebrow mt-2 flex items-center justify-between">
+        {label}
+        <span className="transition-transform group-hover:translate-x-0.5">→</span>
+      </p>
     </Link>
   );
 }

@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { api, type WorkspaceState } from "@/lib/client/api";
+import { Scramble, Spinner, cx } from "../ui";
 import { useWorkspace } from "../workspace-provider";
 import { Composer } from "./composer";
 
@@ -60,16 +60,32 @@ export function NewTask() {
     }
   };
 
+  const boxLabel =
+    box?.state === "ready"
+      ? "ready"
+      : box?.state === "error"
+        ? (box.message ?? "unavailable")
+        : box?.state === "provisioning"
+          ? (box.message ?? "starting").toLowerCase()
+          : "connecting";
+  const model = s ? (s.provider === "bedrock" ? s.bedrockModel : s.anthropicModel) : undefined;
+
   return (
     <div className="scroll-thin flex h-full flex-col overflow-y-auto">
-      <div className="m-auto w-full max-w-[680px] px-6 py-16">
-        <h1 className="text-[28px] font-semibold tracking-tight text-zinc-900">What should I retrieve?</h1>
-        <p className="mt-2 text-[14.5px] leading-relaxed text-zinc-500">
-          I sign in to your vendor portals, find the transactions, download invoices, purchase orders and receipts, and reconcile them against the ledger.
+      <div className="m-auto w-full max-w-[700px] px-6 py-16">
+        <Tape />
+        <p className="eyebrow mt-10">
+          <span className="text-zinc-300">[00] </span>
+          <Scramble text="New task" />
         </p>
-
-        <div className="mt-8">
-          <Composer large autoFocus value={value} onValueChange={setValue} placeholder="Describe the documents you need" onSubmit={start} />
+        <h1 className="mt-3 font-serif text-[44px] leading-[1.02] font-normal tracking-[-0.025em] text-zinc-900">
+          What should I <em className="italic">retrieve</em>?
+        </h1>
+        <p className="mt-3 max-w-[520px] text-[14px] leading-relaxed text-zinc-500">
+          Describe the documents in plain words. The agent signs in to each vendor portal, downloads what it finds, and reconciles it against your ledger.
+        </p>
+        <div className="mt-7">
+          <Composer large autoFocus value={value} onValueChange={setValue} placeholder="Retrieve every October invoice and reconcile it" onSubmit={start} />
           {error ? <p className="mt-2 px-2 text-[12.5px] text-rose-600">{error}</p> : null}
           {s && !providerReady ? (
             <p className="mt-3 px-2 text-[12.5px] text-amber-700">
@@ -81,38 +97,63 @@ export function NewTask() {
           ) : null}
         </div>
 
-        <div className="mt-6 flex flex-col gap-1">
-          {SUGGESTIONS.map((q) => (
+        <div className="mt-6 flex flex-col">
+          {SUGGESTIONS.map((q, i) => (
             <button
               key={q}
               onClick={() => setValue(q)}
-              className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13.5px] text-zinc-600 transition-colors hover:bg-zinc-900/[0.04] hover:text-zinc-900"
+              className="press group flex items-center gap-4 rounded-lg px-3 py-2.5 text-left text-[13.5px] text-zinc-600 hover:bg-zinc-900/[0.045] hover:text-zinc-900"
             >
+              <span className="font-mono text-[10.5px] text-zinc-300 group-hover:text-zinc-500">{String(i + 1).padStart(2, "0")}</span>
               <span className="flex-1">{q}</span>
-              <ArrowUpRight className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
+              <span className="font-mono text-[12px] text-zinc-400 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100">→</span>
             </button>
           ))}
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 px-3 text-[12.5px] text-zinc-400">
-          <span>
-            {s?.portals.length ?? 0} {s?.portals.length === 1 ? "portal" : "portals"} connected
-            {s?.portals.length ? <span className="text-zinc-500">{`: ${s.portals.map((p) => p.name).join(", ")}`}</span> : null}
-          </span>
-          <span>
-            Cloud computer{" "}
-            <span className={box?.state === "error" ? "text-rose-600" : box?.state === "ready" ? "text-emerald-700" : "text-zinc-500"}>
-              {box?.state === "ready"
-                ? "ready"
-                : box?.state === "error"
-                  ? (box.message ?? "unavailable")
-                  : box?.state === "provisioning"
-                    ? (box.message ?? "starting").toLowerCase()
-                    : "connecting"}
-            </span>
-          </span>
+        <div className="mt-10 grid grid-cols-3 gap-3 font-mono text-[10.5px] tracking-wide uppercase">
+          <Readout label="Portals" value={String(s?.portals.length ?? 0).padStart(2, "0")} title={s?.portals.map((p) => p.name).join(", ")} />
+          <Readout
+            label="Sailbox"
+            value={boxLabel}
+            tone={box?.state === "error" ? "bad" : box?.state === "ready" ? "ok" : undefined}
+            busy={!box || box.state === "provisioning" || box.state === "idle"}
+          />
+          <Readout label="Model" value={model ?? "..."} />
         </div>
       </div>
+    </div>
+  );
+}
+
+const TAPE = ["INV-2315", "PO-4471", "RCPT-0091", "FRT-88213", "INV-2307", "CM-0042", "PO-4502", "INV-2291", "RCPT-0103", "BOL-7710"];
+
+/** Ticker tape of document ids drifting past, set in mono. */
+function Tape() {
+  const row = TAPE.map((t, i) => (
+    <span key={i} className="flex items-center gap-6">
+      <span>{t}</span>
+      <span className="text-zinc-300">{i % 3 === 2 ? "⇢ ledger" : "→"}</span>
+    </span>
+  ));
+  return (
+    <div aria-hidden className="tape-mask overflow-hidden font-mono text-[11px] tracking-wider text-zinc-400 uppercase">
+      <div className="tape flex w-max gap-6">
+        {row}
+        {row}
+      </div>
+    </div>
+  );
+}
+
+function Readout({ label, value, tone, busy, title }: { label: string; value: string; tone?: "ok" | "bad"; busy?: boolean; title?: string }) {
+  return (
+    <div className="min-w-0 rounded-lg bg-zinc-900/[0.04] px-3 py-2.5" title={title}>
+      <p className="text-zinc-400">{label}</p>
+      <p className={cx("mt-1 flex items-center gap-1.5 truncate normal-case", tone === "ok" ? "text-emerald-700" : tone === "bad" ? "text-rose-600" : "text-zinc-700")}>
+        {busy ? <Spinner /> : null}
+        <span className="truncate">{value}</span>
+      </p>
     </div>
   );
 }

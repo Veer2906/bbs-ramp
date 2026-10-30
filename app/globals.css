@@ -1,15 +1,53 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f6f6f4;
-  --foreground: #18181b;
-}
+/*
+  Palette: warm paper and ink neutrals with one chartreuse accent, after Ramp's identity.
+  The Tailwind zinc/emerald/amber/rose/sky scales are remapped so every component shares it.
+*/
+@theme {
+  --color-zinc-50: #faf9f6;
+  --color-zinc-100: #f1efe9;
+  --color-zinc-200: #e4e1d8;
+  --color-zinc-300: #cbc7bb;
+  --color-zinc-400: #a29e92;
+  --color-zinc-500: #7b776c;
+  --color-zinc-600: #5d5a51;
+  --color-zinc-700: #46433c;
+  --color-zinc-800: #2f2d28;
+  --color-zinc-900: #1c1b18;
+  --color-zinc-950: #11100e;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-emerald-50: #eef5ef;
+  --color-emerald-500: #3e8a58;
+  --color-emerald-600: #337548;
+  --color-emerald-700: #2a643d;
+  --color-emerald-800: #214f31;
+  --color-emerald-900: #1a3f27;
+
+  --color-amber-50: #fbf4e6;
+  --color-amber-500: #c98a1b;
+  --color-amber-600: #ad7515;
+  --color-amber-700: #915f10;
+  --color-amber-800: #764d0f;
+  --color-amber-900: #5a3b0c;
+
+  --color-rose-50: #fbf0ee;
+  --color-rose-500: #c04a3c;
+  --color-rose-600: #a83f32;
+  --color-rose-700: #8e3429;
+  --color-rose-800: #732a21;
+
+  --color-sky-500: #4c6b8a;
+  --color-sky-700: #37516c;
+
+  --color-paper: #f4f2ec;
+  --color-sunk: #ebe8e0;
+  --color-lime: #e4f222;
+  --color-lime-deep: #c6d40f;
+
+  --font-sans: "TWK Lausanne", var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Burgess", var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
 html,
@@ -18,24 +56,65 @@ body {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "cv11", "ss01";
+  background: var(--color-paper);
+  color: var(--color-zinc-900);
+  font-family: var(--font-sans);
+  letter-spacing: -0.005em;
 }
 
 ::selection {
-  background: #18181b;
-  color: #fafafa;
+  background: var(--color-lime);
+  color: var(--color-zinc-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-lime-deep);
+  outline-offset: 2px;
+}
+/* Text fields draw their own focus ring. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: #d4d4d8 transparent;
+  scrollbar-color: var(--color-zinc-300) transparent;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Small monospace label used for section names, table heads and system readouts. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-zinc-400);
+}
+
+.card {
+  background: #fffefb;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px rgb(28 27 24 / 0.07),
+    0 1px 2px rgb(28 27 24 / 0.04);
+}
+
+/* Buttons sink a pixel when pressed, like a key. */
+.press {
+  transition:
+    transform 80ms steps(2, end),
+    background-color 120ms,
+    color 120ms,
+    box-shadow 120ms;
+}
+.press:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 @keyframes rise {
@@ -48,9 +127,8 @@ body {
     transform: none;
   }
 }
-
 .rise {
-  animation: rise 220ms ease-out both;
+  animation: rise 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 @keyframes shimmer {
@@ -61,12 +139,88 @@ body {
     background-position: 200% 0;
   }
 }
-
 .shimmer-text {
-  background: linear-gradient(90deg, #71717a 0%, #18181b 45%, #71717a 90%);
+  background: linear-gradient(90deg, var(--color-zinc-400) 0%, var(--color-zinc-900) 45%, var(--color-zinc-400) 90%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   animation: shimmer 2.2s linear infinite;
+}
+
+/* Braille spinner: discrete frames, no easing. */
+@keyframes braille {
+  0% { content: "⠋"; }
+  10% { content: "⠙"; }
+  20% { content: "⠹"; }
+  30% { content: "⠸"; }
+  40% { content: "⠼"; }
+  50% { content: "⠴"; }
+  60% { content: "⠦"; }
+  70% { content: "⠧"; }
+  80% { content: "⠇"; }
+  90% { content: "⠏"; }
+}
+.spin-ascii::before {
+  content: "⠋";
+  animation: braille 0.9s steps(1, end) infinite;
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+.caret {
+  animation: caret 1s steps(1, end) infinite;
+}
+
+/* Scan line that sweeps the live browser frame. */
+@keyframes scan {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+.scanline {
+  background: linear-gradient(180deg, transparent 0%, rgb(228 242 34 / 0) 40%, rgb(228 242 34 / 0.22) 50%, rgb(228 242 34 / 0) 60%, transparent 100%);
+  animation: scan 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Slow ticker tape of document ids on the new task screen. */
+@keyframes tape {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.tape {
+  animation: tape 48s linear infinite;
+}
+.tape-mask {
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+/* Odometer digits roll into place. */
+.odo-digit {
+  transition: transform 700ms cubic-bezier(0.2, 0.9, 0.1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .shimmer-text,
+  .scanline,
+  .tape,
+  .caret,
+  .spin-ascii::before {
+    animation: none;
+  }
+  .odo-digit,
+  .press {
+    transition: none;
+  }
 }

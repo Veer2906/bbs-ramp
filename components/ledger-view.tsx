@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { api, docTypeLabel, money, shortDate } from "@/lib/client/api";
 import type { FinancialDocument, LedgerEntry } from "@/lib/types";
-import { Button, PageHeader, Panel, Pill, type Tone, cx } from "./ui";
+import { AsciiBar, Button, Odometer, PageHeader, Panel, Pill, type Tone, cx } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
 type State = "matched" | "review" | "missing";
@@ -49,6 +49,7 @@ export function LedgerView() {
   return (
     <div className="scroll-thin h-full overflow-y-auto pb-10">
       <PageHeader
+        index="02"
         title="Reconciliation"
         subtitle="Ledger transactions and the documents that support them"
         actions={
@@ -64,7 +65,7 @@ export function LedgerView() {
       {error ? <p className="-mt-3 px-8 pb-3 text-[12.5px] text-rose-600">{error}</p> : null}
 
       <div className="grid grid-cols-2 gap-3 px-8 pb-5 md:grid-cols-4">
-        <Metric label="Document coverage" value={`${coverage}%`} />
+        <Metric label="Document coverage" value={`${coverage}%`} bar={coverage / 100} />
         <Metric label="Matched" value={count("matched")} />
         <Metric label="Needs review" value={count("review")} tone={count("review") ? "amber" : undefined} />
         <Metric label="Without documents" value={count("missing")} />
@@ -74,7 +75,7 @@ export function LedgerView() {
         <Panel className="p-1.5">
           <table className="w-full text-left text-[13px]">
             <thead>
-              <tr className="text-[12px] text-zinc-400">
+              <tr className="eyebrow">
                 <th className="px-3 py-2 font-medium">Transaction</th>
                 <th className="px-3 py-2 font-medium">Vendor</th>
                 <th className="px-3 py-2 font-medium">Date</th>
@@ -95,11 +96,11 @@ export function LedgerView() {
 
       {unlinked.length ? (
         <div className="px-8 pt-8">
-          <p className="mb-1 text-[15px] font-semibold tracking-tight text-zinc-900">Documents without a ledger transaction</p>
+          <p className="mb-1 font-serif text-[22px] tracking-tight text-zinc-900">Documents without a ledger transaction</p>
           <p className="mb-3 text-[13px] text-zinc-500">Possible unrecorded liabilities or payments to reconcile.</p>
           <Panel className="p-1.5">
             {unlinked.map((d) => (
-              <Link key={d.id} href={`/documents?doc=${d.id}`} className="flex items-center gap-4 rounded-xl px-3 py-2.5 text-[13px] transition-colors hover:bg-zinc-900/[0.03]">
+              <Link key={d.id} href={`/documents?doc=${d.id}`} className="flex items-center gap-4 rounded-lg px-3 py-2.5 text-[13px] transition-colors hover:bg-zinc-900/[0.03]">
                 <span className="w-40 font-medium text-zinc-900">{d.number}</span>
                 <span className="w-28 text-zinc-500">{docTypeLabel[d.type]}</span>
                 <span className="flex-1 text-zinc-700">{d.vendor}</span>
@@ -153,7 +154,7 @@ function Row({
               {docs.map((d) => {
                 const diff = d.type === "invoice" && d.amount !== undefined ? d.amount - entry.amount : 0;
                 return (
-                  <Link key={d.id} href={`/documents?doc=${d.id}`} className="rounded-xl bg-zinc-900/[0.04] px-3 py-2 text-[12.5px] transition-colors hover:bg-zinc-900/[0.07]">
+                  <Link key={d.id} href={`/documents?doc=${d.id}`} className="rounded-lg bg-zinc-900/[0.04] px-3 py-2 text-[12.5px] transition-colors hover:bg-zinc-900/[0.07]">
                     <span className="font-medium text-zinc-900">{docTypeLabel[d.type]} {d.number}</span>
                     <span className="tabular ml-2 text-zinc-600">{money(d.amount, d.currency)}</span>
                     {Math.abs(diff) > 0.01 ? <span className="tabular ml-2 text-amber-700">{diff > 0 ? "+" : ""}{money(diff)}</span> : null}
@@ -168,11 +169,12 @@ function Row({
   );
 }
 
-function Metric({ label, value, tone }: { label: string; value: string | number; tone?: "amber" }) {
+function Metric({ label, value, tone, bar }: { label: string; value: string | number; tone?: "amber"; bar?: number }) {
   return (
-    <Panel className="px-4 py-3.5">
-      <p className={cx("tabular text-[22px] font-semibold tracking-tight", tone === "amber" ? "text-amber-700" : "text-zinc-900")}>{value}</p>
-      <p className="text-[12.5px] text-zinc-500">{label}</p>
+    <Panel className="px-4 py-4">
+      <p className="eyebrow">{label}</p>
+      <Odometer value={typeof value === "number" ? String(value).padStart(2, "0") : value} className={cx("mt-3 font-serif text-[34px] tracking-tight", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
+      {bar !== undefined ? <AsciiBar value={bar} width={22} className="mt-2 block text-[9px]" /> : null}
     </Panel>
   );
 }
