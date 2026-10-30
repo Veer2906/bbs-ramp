@@ -135,13 +135,13 @@ export function SettingsView() {
                     {p.vaultId ? "Login in vault" : "No login saved"}
                   </Link>
                   <Button variant="danger" onClick={() => setPortals((all) => all.filter((x) => x.key !== p.key))} title="Remove portal">
-                    <Px name="trash" className="size-3" />
+                    <Px name="trash" />
                   </Button>
                 </div>
               </Panel>
             ))}
             <Button className="self-start" onClick={() => setPortals((all) => [...all, { key: `new-${Date.now()}`, name: "", url: "" }])}>
-              <Px name="plus" className="size-2.5" />
+              <Px name="plus" />
               Add portal
             </Button>
           </div>
@@ -237,7 +237,7 @@ function ModelPicker({ options, value, onChange }: { options: { id: string; labe
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col">
-      <h2 className="font-serif text-[22px] tracking-tight text-zinc-900">{title}</h2>
+      <h2 className="text-[20px] font-semibold tracking-[-0.03em] text-zinc-900">{title}</h2>
       {hint ? <p className="mt-0.5 mb-3 text-[13px] text-zinc-500">{hint}</p> : <div className="mb-3" />}
       {children}
     </section>

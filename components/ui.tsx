@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { Px } from "./pixel-icon";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -28,8 +29,8 @@ export function Button({
       className={cx(
         "press inline-flex items-center justify-center gap-1.5 rounded-lg font-medium disabled:cursor-not-allowed disabled:opacity-45",
         size === "sm" ? "h-8 px-3 text-[13px]" : "h-9 px-3.5 text-[13.5px]",
-        variant === "primary" && "bg-moss text-[#f1f4ec] hover:bg-moss-2 [&:hover_.btn-arrow]:translate-x-0.5",
-        variant === "secondary" && "bg-[#fffefb] text-zinc-800 shadow-[0_0_0_1px_rgb(28_27_24/0.1)] hover:shadow-[0_0_0_1px_rgb(28_27_24/0.22)]",
+        variant === "primary" && "px-shadow bg-moss text-[#f1f4ec] hover:bg-moss-2 [&:hover_.btn-arrow]:translate-x-0.5",
+        variant === "secondary" && "bg-zinc-900/[0.055] text-zinc-800 hover:bg-zinc-900/[0.09]",
         variant === "ghost" && "text-zinc-600 hover:bg-zinc-900/[0.05] hover:text-zinc-900",
         variant === "danger" && "text-rose-700 hover:bg-rose-500/10",
         className
@@ -56,7 +57,7 @@ export function Pill({ tone = "neutral", children, className }: { tone?: Tone; c
   return (
     <span
       className={cx(
-        "inline-flex h-[22px] shrink-0 items-center rounded-[5px] px-1.5 font-mono text-[10.5px] font-medium tracking-[0.06em] whitespace-nowrap uppercase",
+        "inline-flex h-[22px] shrink-0 items-center rounded-none px-1.5 font-mono text-[10.5px] font-medium tracking-[0.06em] whitespace-nowrap uppercase",
         TONES[tone],
         className
       )}
@@ -107,7 +108,7 @@ export function PageHeader({ index, title, subtitle, actions }: { index?: string
           {index ? <span className="text-zinc-300">{`[${index}] `}</span> : null}
           <Scramble text={title} />
         </p>
-        <h1 className="mt-2 font-serif text-[34px] leading-none font-normal tracking-[-0.02em] text-zinc-900">{title}</h1>
+        <h1 className="mt-2 text-[34px] leading-none font-semibold tracking-[-0.04em] text-zinc-900">{title}</h1>
         {subtitle ? <p className="mt-2.5 max-w-[640px] text-[13.5px] leading-relaxed text-zinc-500">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
@@ -118,7 +119,7 @@ export function PageHeader({ index, title, subtitle, actions }: { index?: string
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-      <pre aria-hidden className="mb-4 font-mono text-[11px] leading-[1.25] text-zinc-300">{"[ ░░░░░░ ]\n[ ░░░░   ]\n[ ░░     ]"}</pre>
+      <Px name="doc" scale={4} className="mb-5 text-moss" />
       <p className="text-[15px] font-medium text-zinc-800">{title}</p>
       {hint ? <p className="mt-1 max-w-sm text-[13.5px] text-zinc-500">{hint}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
@@ -186,9 +187,10 @@ export function Odometer({ value, className }: { value: string | number; classNa
 export function AsciiBar({ value, width = 20, className }: { value: number; width?: number; className?: string }) {
   const filled = Math.round(Math.max(0, Math.min(1, value)) * width);
   return (
-    <span className={cx("font-mono tracking-[-0.05em]", className)} aria-hidden>
-      <span className="text-zinc-900">{"█".repeat(filled)}</span>
-      <span className="text-zinc-300">{"░".repeat(width - filled)}</span>
+    <span className={cx("inline-flex items-center gap-[2px]", className)} aria-hidden>
+      {Array.from({ length: width }, (_, i) => (
+        <span key={i} className={cx("block size-[6px] transition-colors duration-300", i < filled ? (i >= width - 2 ? "bg-lime" : "bg-leaf-deep") : "bg-zinc-200")} style={{ transitionDelay: `${i * 30}ms` }} />
+      ))}
     </span>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cx } from "../ui";
+import { Px } from "../pixel-icon";
 
 export function Composer({
   placeholder,
@@ -90,7 +91,7 @@ export function Composer({
             className="press flex h-8 items-center gap-2 rounded-lg bg-moss px-3 font-mono text-[11px] tracking-wider text-lime uppercase hover:bg-lime hover:text-moss disabled:bg-zinc-900/[0.07] disabled:text-zinc-400"
           >
             {sending ? "Sending" : "Run"}
-            <span aria-hidden>→</span>
+            <Px name="next" scale={1} />
           </button>
         )}
       </div>

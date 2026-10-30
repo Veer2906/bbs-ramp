@@ -36,7 +36,7 @@ export function VaultView() {
         subtitle="Logins the agent signs in with. Passwords are encrypted before they are stored, and the agent types them without ever seeing them."
         actions={
           <Button variant="primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
-            <Px name="plus" className="size-2.5" />
+            <Px name="plus" />
             Add login
           </Button>
         }
@@ -77,8 +77,8 @@ export function VaultView() {
             />
           ) : (
             <Panel key={e.id} className="flex items-center gap-4 px-5 py-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900/[0.055] font-mono text-[12px] text-zinc-500">
-                <Px name="key" className="size-3.5" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900/[0.04] font-mono text-[12px] text-moss">
+                <Px name="key" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-medium text-zinc-900">{e.name}</p>

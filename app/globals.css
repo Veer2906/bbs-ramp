@@ -41,10 +41,13 @@
   --color-sky-500: #4c6b8a;
   --color-sky-700: #37516c;
 
-  --color-paper: #f4f2ec;
-  --color-sunk: #ebe8e0;
+  --color-paper: #f7f6f1;
+  --color-sunk: #efede6;
   --color-lime: #e4f222;
   --color-lime-deep: #c6d40f;
+  --color-leaf-light: #a6d65a;
+  --color-leaf: #4fae5b;
+  --color-leaf-deep: #23804a;
   --color-moss: #15231b;
   --color-moss-2: #1e3026;
   --color-moss-ink: #a8b5a6;
@@ -52,6 +55,16 @@
 
   --font-sans: "TWK Lausanne", var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Burgess", var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-pixel: var(--font-silkscreen), var(--font-geist-mono), monospace;
+
+  /* Square corners everywhere, like Mistral's grid. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
@@ -106,10 +119,36 @@ select:focus-visible {
 
 .card {
   background: #fffefb;
-  border-radius: 10px;
-  box-shadow:
-    0 0 0 1px rgb(28 27 24 / 0.07),
-    0 1px 2px rgb(28 27 24 / 0.04);
+  box-shadow: 0 0 0 1px var(--color-zinc-200);
+}
+
+/* Checkerboard of soft greens, like Mistral's pixel tiles. */
+.px-checker {
+  background: repeating-conic-gradient(#e9f1df 0 25%, #f3f7ec 0 50%) 0 0 / 28px 28px;
+}
+
+/* Hard offset shadow, no blur: an 8-bit button. */
+.px-shadow {
+  box-shadow: 3px 3px 0 0 var(--color-leaf-deep);
+}
+.px-shadow:active:not(:disabled) {
+  box-shadow: 1px 1px 0 0 var(--color-leaf-deep);
+  transform: translate(2px, 2px);
+}
+
+@keyframes stair {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.stair-block {
+  display: block;
+  animation: stair 320ms steps(3, end) both;
 }
 
 /* Buttons sink a pixel when pressed, like a key. */
@@ -223,6 +262,7 @@ select:focus-visible {
   .scanline,
   .tape,
   .caret,
+  .stair-block,
   .spin-ascii::before {
     animation: none;
   }

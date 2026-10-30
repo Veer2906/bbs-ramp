@@ -45,8 +45,8 @@ export function DocumentsView() {
         />
         <div className="flex flex-wrap items-center gap-3 px-8 pb-4">
           <div className="relative w-64">
-            <Px name="search" className="pointer-events-none absolute top-1/2 left-3 size-3 -translate-y-1/2 text-zinc-400" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Vendor, number or PO" className={cx(inputClass, "pl-8")} />
+            <Px name="search" scale={1.5} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-500" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Vendor, number or PO" className={cx(inputClass, "pl-9")} />
           </div>
           <Segmented<StatusFilter>
             value={status}
@@ -91,7 +91,7 @@ export function DocumentsView() {
                     <tr
                       key={d.id}
                       onClick={() => select(d.id)}
-                      className={cx("cursor-pointer transition-colors [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl", d.id === selectedId ? "bg-zinc-900/[0.05]" : "hover:bg-zinc-900/[0.03]")}
+                      className={cx("cursor-pointer transition-colors ", d.id === selectedId ? "bg-zinc-900/[0.05]" : "hover:bg-zinc-900/[0.03]")}
                     >
                       <td className="px-3 py-2.5">
                         <p className="font-medium text-zinc-900">{d.number}</p>
@@ -154,7 +154,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         </div>
         <DocStatus status={doc.status} />
         <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-900/5 hover:text-zinc-800" title="Close">
-          <Px name="x" className="size-3" />
+          <Px name="x" />
         </button>
       </div>
 
@@ -238,7 +238,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         <span className="flex-1" />
         {doc.fileName ? (
           <a href={`/api/files/${doc.id}?download`} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13.5px] font-medium text-zinc-600 hover:bg-zinc-900/5 hover:text-zinc-900">
-            <Px name="download" className="size-3" />
+            <Px name="download" />
             Download
           </a>
         ) : null}

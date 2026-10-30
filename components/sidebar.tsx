@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ago } from "@/lib/client/api";
+import { PixelStairs, Px } from "./pixel-icon";
 import { Spinner, cx } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
@@ -26,10 +27,10 @@ function NavLink({ href, active, index, label, count }: { href: string; active: 
         active ? "bg-white/[0.07] font-medium text-white" : "text-moss-ink hover:bg-white/[0.045] hover:text-white"
       )}
     >
-      <span className={cx("absolute top-2 bottom-2 left-0 w-[3px] rounded-r-full bg-lime transition-transform duration-200", active ? "scale-y-100" : "scale-y-0")} />
+      <span className={cx("absolute top-2 bottom-2 left-0 w-[3px]  bg-lime transition-transform duration-200", active ? "scale-y-100" : "scale-y-0")} />
       <span className={cx("font-mono text-[10.5px] tracking-wider", active ? "text-lime" : "text-moss-dim")}>{index}</span>
       <span className="flex-1">{label}</span>
-      {count ? <span className="rounded-[4px] bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{String(count).padStart(2, "0")}</span> : null}
+      {count ? <span className="rounded-none bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{String(count).padStart(2, "0")}</span> : null}
     </Link>
   );
 }
@@ -58,9 +59,9 @@ function SidebarInner() {
           path === "/" && !currentRun ? "bg-lime text-moss" : "bg-white/[0.07] text-[#eef2ea] hover:bg-lime hover:text-moss"
         )}
       >
-        <span className="font-mono text-[13px] leading-none">+</span>
+        <Px name="plus" scale={1.5} />
         <span className="flex-1">New task</span>
-        <span className="font-mono text-[10.5px] opacity-50 transition-transform group-hover:translate-x-0.5">→</span>
+        <Px name="next" scale={1} className="opacity-60 transition-transform group-hover:translate-x-0.5" />
       </Link>
 
       <nav className="mt-4 flex flex-col gap-0.5">
@@ -106,7 +107,8 @@ function SidebarInner() {
         })}
       </div>
 
-      <div className="mt-2">
+      <PixelStairs heights={[1, 2, 1, 3, 2, 4, 3, 5]} block={10} className="mt-3 mb-3 px-3 opacity-90" />
+      <div>
         <NavLink href="/settings" active={path === "/settings"} index="//" label="Settings" />
       </div>
     </>

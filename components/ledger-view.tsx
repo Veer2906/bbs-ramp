@@ -56,7 +56,7 @@ export function LedgerView() {
           <>
             <input ref={file} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => e.target.files?.[0] && void importCsv(e.target.files[0])} />
             <Button onClick={() => file.current?.click()}>
-              <Px name="upload" className="size-3" />
+              <Px name="upload" />
               Import ledger CSV
             </Button>
           </>
@@ -96,7 +96,7 @@ export function LedgerView() {
 
       {unlinked.length ? (
         <div className="px-8 pt-8">
-          <p className="mb-1 font-serif text-[22px] tracking-tight text-zinc-900">Documents without a ledger transaction</p>
+          <p className="mb-1 text-[20px] font-semibold tracking-[-0.03em] text-zinc-900">Documents without a ledger transaction</p>
           <p className="mb-3 text-[13px] text-zinc-500">Possible unrecorded liabilities or payments to reconcile.</p>
           <Panel className="p-1.5">
             {unlinked.map((d) => (
@@ -133,7 +133,7 @@ function Row({
   const [label, tone] = STATE[state];
   return (
     <>
-      <tr onClick={toggle} className={cx("cursor-pointer transition-colors [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl", open ? "bg-zinc-900/[0.04]" : "hover:bg-zinc-900/[0.03]")}>
+      <tr onClick={toggle} className={cx("cursor-pointer transition-colors ", open ? "bg-zinc-900/[0.04]" : "hover:bg-zinc-900/[0.03]")}>
         <td className="px-3 py-2.5">
           <p className="font-medium text-zinc-900">{entry.description}</p>
           <p className="text-[12px] text-zinc-400">{entry.id}{entry.reference ? ` · ${entry.reference}` : ""}</p>
@@ -173,8 +173,8 @@ function Metric({ label, value, tone, bar }: { label: string; value: string | nu
   return (
     <Panel className="px-4 py-4">
       <p className="eyebrow">{label}</p>
-      <Odometer value={typeof value === "number" ? String(value).padStart(2, "0") : value} className={cx("mt-3 font-serif text-[34px] tracking-tight", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
-      {bar !== undefined ? <AsciiBar value={bar} width={22} className="mt-2 block text-[9px]" /> : null}
+      <Odometer value={typeof value === "number" ? String(value).padStart(2, "0") : value} className={cx("mt-3 font-pixel text-[30px]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
+      {bar !== undefined ? <AsciiBar value={bar} width={22} className="mt-3 flex" /> : null}
     </Panel>
   );
 }

@@ -77,7 +77,7 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
     case "user":
       return (
         <div className="rise flex justify-end">
-          <div className="max-w-[85%] rounded-[10px] rounded-br-[3px] bg-moss px-4 py-2.5 text-[14px] text-[#eef2ea] leading-relaxed whitespace-pre-wrap">{e.text}</div>
+          <div className="max-w-[85%] rounded-none bg-moss px-4 py-2.5 text-[14px] text-[#eef2ea] leading-relaxed whitespace-pre-wrap">{e.text}</div>
         </div>
       );
     case "note":
@@ -88,7 +88,7 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
       return <Question event={e} live={live && run.status === "waiting" && !e.answer} onAnswer={onAnswer} />;
     case "error":
       return (
-        <div className="rise rounded-[10px] bg-rose-500/[0.08] px-4 py-3 text-[13.5px] leading-relaxed text-rose-800">
+        <div className="rise rounded-none bg-rose-500/[0.08] px-4 py-3 text-[13.5px] leading-relaxed text-rose-800">
           <p className="eyebrow !text-rose-700">Run stopped</p>
           <p className="mt-0.5 text-rose-700">{e.text}</p>
         </div>
@@ -110,7 +110,7 @@ function ActionGroup({ rows, active }: { rows: Row[]; active: boolean }) {
     <div className="rise flex flex-col">
       {hidden ? (
         <button onClick={() => setOpen(true)} className="mb-1 flex h-7 items-center gap-1.5 self-start rounded-lg px-1 text-[12.5px] text-zinc-500 hover:text-zinc-800">
-          <Px name="chevron" className="size-2.5" />
+          <Px name="chevron" scale={1} />
           {hidden} earlier {hidden === 1 ? "step" : "steps"}
         </button>
       ) : null}
@@ -152,7 +152,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
               : "bg-zinc-900/[0.035] text-zinc-800 hover:bg-zinc-900/[0.06]"
         )}
       >
-        <Px name={icon} className="size-3 shrink-0 opacity-80" />
+        <Px name={icon} className="shrink-0 text-moss" />
         <span className="min-w-0 flex-1 truncate">{row.label}</span>
         <span className="font-mono text-[10px] tracking-wider uppercase opacity-50">{row.kind === "document" ? "doc" : row.kind}</span>
       </Link>
@@ -164,9 +164,9 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
       {running ? (
         <Spinner className="w-3.5 text-[12px] text-zinc-700" />
       ) : row.ok === false ? (
-        <Px name="x" className="size-3 shrink-0 text-rose-500" />
+        <Px name="x" className="shrink-0 text-rose-500" />
       ) : (
-        <Px name={icon} className="size-3 shrink-0 text-zinc-400" />
+        <Px name={icon} className="shrink-0 text-moss" />
       )}
       <span className={cx("min-w-0 truncate", running ? "shimmer-text font-medium" : row.ok === false ? "text-rose-700" : "text-zinc-600")}>{row.label}</span>
       {row.ok === false && row.detail ? <span className="min-w-0 flex-1 truncate text-[12px] text-rose-500/80">{row.detail}</span> : <span className="flex-1" />}
@@ -209,7 +209,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
   if (!live) {
     return (
       <div className="rise flex min-h-9 items-center gap-2.5 rounded-lg bg-zinc-900/[0.04] px-3 py-1.5 text-[13px] text-zinc-700">
-        <Px name="key" className="size-3 shrink-0 opacity-70" />
+        <Px name="key" className="shrink-0 opacity-70" />
         <span className="min-w-0 flex-1 truncate">
           {event.outcome === "saved"
             ? `Login for ${event.site} saved to the vault`
@@ -229,7 +229,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
     <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-lime-deep">
       <div className="flex items-start gap-3 px-1">
         <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-lime">
-          <Px name="key" className="size-3.5 text-moss" />
+          <Px name="key" className="text-moss" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="eyebrow flex items-center gap-1.5 !text-zinc-600"><Spinner /> Login needed</p>
@@ -294,10 +294,10 @@ function Summary({ text, run }: { text: string; run: Run }) {
 function Metric({ href, label, value, tone }: { href: string; label: string; value: number; tone?: "amber" }) {
   return (
     <Link href={href} className="press group rounded-lg bg-zinc-900/[0.04] px-3 py-3 hover:bg-zinc-900/[0.07]">
-      <Odometer value={String(value).padStart(2, "0")} className={cx("font-serif text-[30px] tracking-tight", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
+      <Odometer value={String(value).padStart(2, "0")} className={cx("font-pixel text-[28px]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
       <p className="eyebrow mt-2 flex items-center justify-between">
         {label}
-        <span className="transition-transform group-hover:translate-x-0.5">→</span>
+        <Px name="next" scale={1.5} className="transition-transform group-hover:translate-x-0.5" />
       </p>
     </Link>
   );
