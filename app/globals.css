@@ -37,6 +37,7 @@
   --color-rose-700: #8e3429;
   --color-rose-800: #732a21;
 
+  --color-sky-50: #eef2f6;
   --color-sky-500: #4c6b8a;
   --color-sky-700: #37516c;
 
@@ -44,6 +45,10 @@
   --color-sunk: #ebe8e0;
   --color-lime: #e4f222;
   --color-lime-deep: #c6d40f;
+  --color-moss: #15231b;
+  --color-moss-2: #1e3026;
+  --color-moss-ink: #a8b5a6;
+  --color-moss-dim: #66796b;
 
   --font-sans: "TWK Lausanne", var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Burgess", var(--font-newsreader), ui-serif, Georgia, serif;
