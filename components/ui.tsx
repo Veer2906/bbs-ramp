@@ -29,7 +29,7 @@ export function Button({
       className={cx(
         "press inline-flex items-center justify-center gap-1.5 rounded-lg font-medium disabled:cursor-not-allowed disabled:opacity-45",
         size === "sm" ? "h-8 px-3 text-[13px]" : "h-9 px-3.5 text-[13.5px]",
-        variant === "primary" && "px-shadow bg-moss text-[#f1f4ec] hover:bg-moss-2 [&:hover_.btn-arrow]:translate-x-0.5",
+        variant === "primary" && "bg-moss text-[#f1f4ec] hover:bg-moss-2 [&:hover_.btn-arrow]:translate-x-0.5",
         variant === "secondary" && "bg-zinc-900/[0.055] text-zinc-800 hover:bg-zinc-900/[0.09]",
         variant === "ghost" && "text-zinc-600 hover:bg-zinc-900/[0.05] hover:text-zinc-900",
         variant === "danger" && "text-rose-700 hover:bg-rose-500/10",
@@ -100,15 +100,11 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   return <p className={cx("eyebrow", className)}>{children}</p>;
 }
 
-export function PageHeader({ index, title, subtitle, actions }: { index?: string; title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex items-end justify-between gap-4 px-8 pt-9 pb-6">
       <div className="min-w-0">
-        <p className="eyebrow">
-          {index ? <span className="text-zinc-300">{`[${index}] `}</span> : null}
-          <Scramble text={title} />
-        </p>
-        <h1 className="mt-2 text-[34px] leading-none font-semibold tracking-[-0.04em] text-zinc-900">{title}</h1>
+        <h1 className="text-[28px] leading-none font-semibold tracking-[-0.04em] text-zinc-900">{title}</h1>
         {subtitle ? <p className="mt-2.5 max-w-[640px] text-[13.5px] leading-relaxed text-zinc-500">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
@@ -119,7 +115,7 @@ export function PageHeader({ index, title, subtitle, actions }: { index?: string
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-      <Px name="doc" scale={4} className="mb-5 text-moss" />
+      <Px name="doc" scale={3} className="mb-5 text-zinc-300" />
       <p className="text-[15px] font-medium text-zinc-800">{title}</p>
       {hint ? <p className="mt-1 max-w-sm text-[13.5px] text-zinc-500">{hint}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}

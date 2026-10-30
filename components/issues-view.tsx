@@ -57,7 +57,6 @@ export function IssuesView() {
   return (
     <div className="scroll-thin h-full overflow-y-auto pb-10">
       <PageHeader
-        index="03"
         title="Issues"
         subtitle="Missing documents, mismatches and anything else the agent wants a person to check"
         actions={

@@ -2,15 +2,43 @@
 
 Give it an instruction like *"Retrieve every October invoice from all vendor portals and reconcile them against the ledger"*. It signs in to legacy vendor portals in a real browser, finds the transactions, downloads invoices, purchase orders and receipts, reads them, matches them to ledger entries, and flags anything a person should check.
 
-## Run it
+## Setup
 
-```bash
-cp .env.example .env.local   # add SAIL_API_KEY and ANTHROPIC_API_KEY (or Bedrock credentials)
-npm install
-npm run dev                  # http://localhost:3000
-```
+You need Node.js 22 or newer, a [Sail Research](https://docs.sailresearch.com) API key, and either an Anthropic API key or AWS Bedrock access.
 
-The first task provisions a Sailbox (a persistent cloud computer) and installs Chromium in it, which takes about a minute. After that the box is reused: logins, cookies and downloads persist between tasks.
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Create your local config and add your keys:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   | Variable | Required | What it is |
+   | --- | --- | --- |
+   | `SAIL_API_KEY` | yes | Runs the agent's browser on a Sailbox (a persistent cloud computer) |
+   | `ANTHROPIC_API_KEY` | one of these | Claude through the Anthropic API |
+   | `AWS_BEARER_TOKEN_BEDROCK` or `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` | one of these | Claude through AWS Bedrock; also set `AWS_REGION` |
+   | `VAULT_KEY` | recommended | Encrypts saved portal passwords. Any long random string, e.g. `openssl rand -hex 32` |
+   | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | optional | Store everything in Supabase instead of `.data/` (see below) |
+
+3. Start the app:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:3000. It opens straight into the agent.
+
+4. Pick the model provider in **Settings** (Anthropic or Bedrock) and try a suggestion, e.g. *"Retrieve every October 2026 invoice from all vendor portals and reconcile them against the ledger"*.
+
+The first task provisions the Sailbox and installs Chromium in it, which takes about a minute. After that the box is reused: logins, cookies and downloads persist between tasks.
+
+Production build: `npm run build && npm start`.
 
 ## What's in the app
 
@@ -19,6 +47,7 @@ The first task provisions a Sailbox (a persistent cloud computer) and installs C
 - **Reconciliation**: ledger transactions with their supporting documents, coverage, and documents that have no ledger entry. Import your own ledger as CSV (`date,vendor,description,amount,po,reference`).
 - **Issues**: amount mismatches, missing documents, duplicates, unrecorded invoices, access problems. Resolve them or send the agent to investigate.
 - **Vault**: saved logins for vendor portals. Passwords are encrypted (AES-256-GCM) before they are stored and are never shown again, to you or the agent. When the agent reaches a login it has no password for, the task pauses and shows a Vault form; save the login and it carries on, or skip that portal.
+- **Memory**: active memory the agent reads before every task: key dates, important invoices, vendor quirks and your rules, shown as a graph and a list. Add, edit, link or delete any fact; the agent also saves facts it learns (marked *Learned*) with its `remember` tool.
 - **Settings**: Anthropic API or AWS Bedrock, model choice, vendor portals, storage status, Sailbox status, reset.
 
 ## Demo portals
@@ -43,7 +72,7 @@ SUPABASE_SERVICE_ROLE_KEY=...   # server only, never sent to the browser
 SUPABASE_DB_URL=postgresql://...  # optional: lets the app create its tables on start
 ```
 
-If you skip `SUPABASE_DB_URL`, paste `supabase/migrations/*.sql` into the Supabase SQL editor once. Documents, ledger, issues, task history, settings and Vault entries go into tables; original files go into a private `documents` Storage bucket. The app shows a banner if Supabase is set but not ready.
+If you skip `SUPABASE_DB_URL`, paste `supabase/migrations/*.sql` into the Supabase SQL editor once. Documents, ledger, issues, task history, settings, memory and Vault entries go into tables; original files go into a private `documents` Storage bucket. The app shows a banner if Supabase is set but not ready.
 
 Vault encryption key: set `VAULT_KEY` (keep it somewhere safe). Without it the app creates `.data/vault.key`; if that file is lost, saved passwords can't be decrypted and must be re-entered.
 

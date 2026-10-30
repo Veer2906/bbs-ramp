@@ -49,7 +49,6 @@ export function LedgerView() {
   return (
     <div className="scroll-thin h-full overflow-y-auto pb-10">
       <PageHeader
-        index="02"
         title="Reconciliation"
         subtitle="Ledger transactions and the documents that support them"
         actions={
@@ -173,7 +172,7 @@ function Metric({ label, value, tone, bar }: { label: string; value: string | nu
   return (
     <Panel className="px-4 py-4">
       <p className="eyebrow">{label}</p>
-      <Odometer value={typeof value === "number" ? String(value).padStart(2, "0") : value} className={cx("mt-3 font-pixel text-[30px]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
+      <Odometer value={typeof value === "number" ? String(value).padStart(2, "0") : value} className={cx("mt-3 text-[28px] font-semibold tracking-[-0.04em]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
       {bar !== undefined ? <AsciiBar value={bar} width={22} className="mt-3 flex" /> : null}
     </Panel>
   );

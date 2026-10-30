@@ -184,3 +184,18 @@ export type StreamMessage =
   | { type: "run"; run: Omit<Run, "events"> }
   | { type: "frame"; image: string; url: string; title: string }
   | { type: "data" };
+
+export type MemoryKind = "date" | "invoice" | "vendor" | "rule" | "note";
+
+/** A fact in active memory. The agent reads every node at the start of each task; the user can edit or delete any of them. */
+export interface MemoryNode {
+  id: string;
+  kind: MemoryKind;
+  title: string;
+  detail: string;
+  /** Ids of related nodes. Mentions of another node's title in the detail also count as links in the graph. */
+  links: string[];
+  source: "user" | "agent";
+  createdAt: number;
+  updatedAt: number;
+}

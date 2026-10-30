@@ -1,4 +1,4 @@
-import type { FinancialDocument, Issue, LedgerEntry, PublicSettings, PublicVaultEntry, Run, RunSummary, StorageStatus, VaultStatus } from "../types";
+import type { FinancialDocument, Issue, LedgerEntry, MemoryNode, PublicSettings, PublicVaultEntry, Run, RunSummary, StorageStatus, VaultStatus } from "../types";
 
 export interface ModelOption {
   id: string;
@@ -52,6 +52,10 @@ export const api = {
   importLedger: (csv: string) => call<LedgerEntry[]>("/api/ledger", { method: "PUT", json: { csv } }),
   reset: () => call("/api/reset", { method: "POST" }),
   storage: () => call<StorageStatus>("/api/storage"),
+  memory: () => call<MemoryNode[]>("/api/memory"),
+  addMemory: (m: MemoryDraft) => call<MemoryNode>("/api/memory", { method: "POST", json: m }),
+  updateMemory: (id: string, m: MemoryDraft) => call<MemoryNode>(`/api/memory/${id}`, { method: "PATCH", json: m }),
+  deleteMemory: (id: string) => call(`/api/memory/${id}`, { method: "DELETE" }),
   vault: () => call<{ entries: PublicVaultEntry[]; status: VaultStatus }>("/api/vault"),
   addVault: (e: VaultDraft) => call<PublicVaultEntry>("/api/vault", { method: "POST", json: e }),
   updateVault: (id: string, e: VaultDraft) => call<PublicVaultEntry>(`/api/vault/${id}`, { method: "PATCH", json: e }),
@@ -59,6 +63,8 @@ export const api = {
   answerCredential: (runId: string, body: { rid: string; action: "save" | "use" | "skip"; vaultId?: string } & VaultDraft) =>
     call<{ ok: true; vaultId?: string }>(`/api/runs/${runId}/credential`, { method: "POST", json: body }),
 };
+
+export type MemoryDraft = Partial<Pick<MemoryNode, "kind" | "title" | "detail" | "links">>;
 
 export interface VaultDraft {
   name?: string;

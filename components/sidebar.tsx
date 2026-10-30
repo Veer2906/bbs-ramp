@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ago } from "@/lib/client/api";
-import { PixelStairs, Px } from "./pixel-icon";
+import { Px } from "./pixel-icon";
 import { Spinner, cx } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
@@ -18,7 +18,7 @@ export function Sidebar() {
   );
 }
 
-function NavLink({ href, active, index, label, count }: { href: string; active: boolean; index: string; label: string; count?: number }) {
+function NavLink({ href, active, label, count }: { href: string; active: boolean; label: string; count?: number }) {
   return (
     <Link
       href={href}
@@ -28,9 +28,8 @@ function NavLink({ href, active, index, label, count }: { href: string; active: 
       )}
     >
       <span className={cx("absolute top-2 bottom-2 left-0 w-[3px]  bg-lime transition-transform duration-200", active ? "scale-y-100" : "scale-y-0")} />
-      <span className={cx("font-mono text-[10.5px] tracking-wider", active ? "text-lime" : "text-moss-dim")}>{index}</span>
       <span className="flex-1">{label}</span>
-      {count ? <span className="rounded-none bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{String(count).padStart(2, "0")}</span> : null}
+      {count ? <span className="rounded-none bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{count}</span> : null}
     </Link>
   );
 }
@@ -48,6 +47,7 @@ function SidebarInner() {
     { href: "/ledger", label: "Reconciliation" },
     { href: "/issues", label: "Issues", count: openIssues || undefined },
     { href: "/vault", label: "Vault" },
+    { href: "/memory", label: "Memory" },
   ];
 
   return (
@@ -59,20 +59,20 @@ function SidebarInner() {
           path === "/" && !currentRun ? "bg-lime text-moss" : "bg-white/[0.07] text-[#eef2ea] hover:bg-lime hover:text-moss"
         )}
       >
-        <Px name="plus" scale={1.5} />
+        <Px name="plus" scale={1} />
         <span className="flex-1">New task</span>
         <Px name="next" scale={1} className="opacity-60 transition-transform group-hover:translate-x-0.5" />
       </Link>
 
       <nav className="mt-4 flex flex-col gap-0.5">
-        {nav.map((n, i) => (
-          <NavLink key={n.href} href={n.href} active={path === n.href} index={String(i + 1).padStart(2, "0")} label={n.label} count={n.count} />
+        {nav.map((n) => (
+          <NavLink key={n.href} href={n.href} active={path === n.href} label={n.label} count={n.count} />
         ))}
       </nav>
 
       <p className="eyebrow mt-8 mb-2 flex items-center px-3 !text-moss-dim">
         <span className="flex-1">Tasks</span>
-        <span className="text-[#4a5c50]">[{String(runs.length).padStart(2, "0")}]</span>
+        <span className="text-[#4a5c50]">{runs.length}</span>
       </p>
       <div className="scroll-thin -mx-1 flex-1 overflow-y-auto px-1">
         {runs.length === 0 ? <p className="px-3 py-2 font-mono text-[11.5px] text-moss-dim">no tasks yet</p> : null}
@@ -107,9 +107,8 @@ function SidebarInner() {
         })}
       </div>
 
-      <PixelStairs heights={[1, 2, 1, 3, 2, 4, 3, 5]} block={10} className="mt-3 mb-3 px-3 opacity-90" />
-      <div>
-        <NavLink href="/settings" active={path === "/settings"} index="//" label="Settings" />
+      <div className="mt-2">
+        <NavLink href="/settings" active={path === "/settings"} label="Settings" />
       </div>
     </>
   );

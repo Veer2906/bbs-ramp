@@ -31,7 +31,6 @@ export function VaultView() {
   return (
     <div className="scroll-thin h-full overflow-y-auto pb-16">
       <PageHeader
-        index="04"
         title="Vault"
         subtitle="Logins the agent signs in with. Passwords are encrypted before they are stored, and the agent types them without ever seeing them."
         actions={
@@ -77,7 +76,7 @@ export function VaultView() {
             />
           ) : (
             <Panel key={e.id} className="flex items-center gap-4 px-5 py-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900/[0.04] font-mono text-[12px] text-moss">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900/[0.04] font-mono text-[12px] text-zinc-500">
                 <Px name="key" />
               </div>
               <div className="min-w-0 flex-1">

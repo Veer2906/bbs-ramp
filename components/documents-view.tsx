@@ -39,13 +39,12 @@ export function DocumentsView() {
     <div className="flex h-full min-h-0">
       <div className="scroll-thin min-w-0 flex-1 overflow-y-auto pb-10">
         <PageHeader
-          index="01"
           title="Documents"
           subtitle={data.documents.length ? `${data.documents.length} retrieved · ${money(total)} invoiced in view` : "Everything the agent retrieves lands here"}
         />
         <div className="flex flex-wrap items-center gap-3 px-8 pb-4">
           <div className="relative w-64">
-            <Px name="search" scale={1.5} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-500" />
+            <Px name="search" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-500" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Vendor, number or PO" className={cx(inputClass, "pl-9")} />
           </div>
           <Segmented<StatusFilter>

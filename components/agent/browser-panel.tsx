@@ -47,13 +47,13 @@ export function BrowserPanel({ run, frame, live }: { run: Run; frame?: Frame; li
             <span className="font-mono text-[10px] tracking-wider text-zinc-400 uppercase">Idle</span>
           )}
         </div>
-        <div className={cx("relative aspect-[1280/860] overflow-hidden", frame ? "bg-zinc-100" : "px-checker")}>
+        <div className={cx("relative aspect-[1280/860] overflow-hidden", "bg-zinc-100")}>
           {frame ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={`data:image/jpeg;base64,${frame.image}`} alt={frame.title || "Browser"} className="absolute inset-0 size-full object-cover object-top" />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 font-mono text-[11px] tracking-wide text-zinc-400 uppercase">
-              {live ? <Spinner className="text-[16px] text-zinc-500" /> : <Px name="globe" scale={4} className="mb-1 text-moss" />}
+              {live ? <Spinner className="text-[16px] text-zinc-500" /> : <Px name="globe" scale={2} className="mb-1 text-zinc-300" />}
               <span>{live ? "Waiting for the browser" : "No browser activity"}</span>
             </div>
           )}

@@ -66,7 +66,6 @@ export function SettingsView() {
   return (
     <div className="scroll-thin h-full overflow-y-auto pb-16">
       <PageHeader
-        index="//"
         title="Settings"
         actions={
           <Button variant="primary" loading={saving} onClick={() => void save()}>

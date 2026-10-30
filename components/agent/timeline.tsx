@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Px, type PixelName } from "../pixel-icon";
-import { api } from "@/lib/client/api";
+import { api, duration } from "@/lib/client/api";
 import type { Run, RunEvent } from "@/lib/types";
 import { useWorkspace } from "../workspace-provider";
 import { Button, Odometer, Spinner, cx } from "../ui";
@@ -50,24 +50,87 @@ const ICONS: Record<string, PixelName> = {
   update_plan: "list",
 };
 
+type Turn = { key: number; user?: RunEvent; trace: RunEvent[]; tail: RunEvent[] };
+
+/** Split the run into turns: each user message, the agent's working trace, then its summary or error. */
+function turns(events: RunEvent[]): Turn[] {
+  const out: Turn[] = [];
+  for (const e of events) {
+    if (e.kind === "user" || !out.length) out.push({ key: e.id, user: e.kind === "user" ? e : undefined, trace: [], tail: [] });
+    if (e.kind === "user") continue;
+    const t = out[out.length - 1];
+    if (e.kind === "summary" || e.kind === "error") t.tail.push(e);
+    else t.trace.push(e);
+  }
+  return out;
+}
+
 export function Timeline({ run, live, onAnswer }: { run: Run; live: boolean; onAnswer: (text: string) => void }) {
-  const items = group(run.events);
+  const list = turns(run.events);
   return (
-    <div className="flex flex-col gap-5">
-      {items.map((it, idx) =>
-        it.kind === "group" ? (
-          <ActionGroup key={it.key} rows={it.rows} active={live && idx === items.length - 1} />
-        ) : (
-          <Single key={it.key} event={it.event} run={run} live={live} onAnswer={onAnswer} />
-        )
-      )}
-      {live && items[items.length - 1]?.kind !== "group" && run.status !== "waiting" ? (
-        <p className="rise flex items-center gap-2 font-mono text-[11.5px] tracking-wide text-zinc-500 uppercase">
-          <Spinner className="text-zinc-700" />
-          <span className="shimmer-text">Thinking</span>
-          <span className="caret text-zinc-700">▍</span>
-        </p>
+    <div className="flex flex-col gap-6">
+      {list.map((t, i) => (
+        <TurnView key={t.key} turn={t} run={run} active={live && i === list.length - 1} onAnswer={onAnswer} />
+      ))}
+    </div>
+  );
+}
+
+function TurnView({ turn, run, active, onAnswer }: { turn: Turn; run: Run; active: boolean; onAnswer: (t: string) => void }) {
+  const [manual, setManual] = useState<boolean>();
+  const waiting = active && run.status === "waiting";
+  const finished = !active && turn.tail.length > 0;
+  const open = waiting || (manual ?? !finished);
+  const items = group(turn.trace);
+  const steps = turn.trace.filter((e) => e.kind === "action").length;
+  const first = turn.user?.t ?? turn.trace[0]?.t ?? 0;
+  const last = (turn.tail[0] ?? turn.trace[turn.trace.length - 1])?.t ?? first;
+  const thinking = active && !waiting && items[items.length - 1]?.kind !== "group";
+
+  return (
+    <div className="flex flex-col gap-3">
+      {turn.user ? <Single event={turn.user} run={run} live={active} onAnswer={onAnswer} /> : null}
+      {items.length || active ? (
+        <div>
+          <button
+            onClick={() => setManual(!open)}
+            disabled={waiting}
+            className="group flex h-7 items-center gap-2 text-[12.5px] text-zinc-500 hover:text-zinc-900 disabled:hover:text-zinc-500"
+          >
+            {active ? <Spinner className="text-zinc-700" /> : <Px name="chevron" scale={1} className={cx("transition-transform duration-300", open ? "" : "-rotate-90")} />}
+            <span className={active && !waiting ? "shimmer-text" : ""}>
+              {waiting ? "Waiting for you" : active ? "Thinking" : `Worked for ${duration(Math.max(0, last - first))}`}
+            </span>
+            {steps ? <span className="font-mono text-[10.5px] text-zinc-400">{`${steps} ${steps === 1 ? "step" : "steps"}`}</span> : null}
+          </button>
+          <div className="fold" data-closed={!open}>
+            <div>
+              <div className="relative mt-1 ml-[3px] pl-5">
+                <span aria-hidden className="tree-rail absolute top-0 bottom-2 left-0 w-px bg-zinc-200" />
+                <div className="flex flex-col gap-3">
+                  {items.map((it, idx) => (
+                    <div key={it.key} className="tree-node relative before:absolute before:top-[15px] before:-left-5 before:h-px before:w-3 before:bg-zinc-200">
+                      {it.kind === "group" ? (
+                        <ActionGroup rows={it.rows} active={active && idx === items.length - 1} />
+                      ) : (
+                        <Single event={it.event} run={run} live={active} onAnswer={onAnswer} />
+                      )}
+                    </div>
+                  ))}
+                  {thinking ? (
+                    <div className="tree-node relative flex h-8 items-center gap-2 text-[13px] text-zinc-400 before:absolute before:top-[15px] before:-left-5 before:h-px before:w-3 before:bg-zinc-200">
+                      <span className="caret">▍</span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
+      {turn.tail.map((e) => (
+        <Single key={e.id} event={e} run={run} live={active} onAnswer={onAnswer} />
+      ))}
     </div>
   );
 }
@@ -81,7 +144,7 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
         </div>
       );
     case "note":
-      return <p className="rise text-[14.5px] leading-relaxed whitespace-pre-wrap text-zinc-800">{e.text}</p>;
+      return <p className="rise pt-[5px] text-[14px] leading-relaxed whitespace-pre-wrap text-zinc-800">{e.text}</p>;
     case "credential":
       return <CredentialRequest event={e} runId={run.id} live={live && run.status === "waiting" && !e.outcome} />;
     case "question":
@@ -144,15 +207,11 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
       <Link
         href={href}
         className={cx(
-          "press my-0.5 flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px]",
-          row.kind === "issue"
-            ? "bg-amber-500/[0.08] text-amber-900 hover:bg-amber-500/[0.13]"
-            : row.kind === "match"
-              ? "bg-emerald-500/[0.06] text-emerald-900 hover:bg-emerald-500/[0.11]"
-              : "bg-zinc-900/[0.035] text-zinc-800 hover:bg-zinc-900/[0.06]"
+          "press -mx-1 flex min-h-8 items-center gap-2.5 px-1 py-1 text-[13px]",
+          row.kind === "issue" ? "text-amber-800 hover:bg-amber-500/[0.07]" : "text-zinc-800 hover:bg-zinc-900/[0.04]"
         )}
       >
-        <Px name={icon} className="shrink-0 text-moss" />
+        <Px name={icon} className="shrink-0 text-zinc-500" />
         <span className="min-w-0 flex-1 truncate">{row.label}</span>
         <span className="font-mono text-[10px] tracking-wider uppercase opacity-50">{row.kind === "document" ? "doc" : row.kind}</span>
       </Link>
@@ -162,11 +221,11 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
   return (
     <div className="group flex min-h-8 items-center gap-2.5 px-1 text-[13px]">
       {running ? (
-        <Spinner className="w-3.5 text-[12px] text-zinc-700" />
+        <Spinner className="w-3.5 text-[12px] text-zinc-500" />
       ) : row.ok === false ? (
         <Px name="x" className="shrink-0 text-rose-500" />
       ) : (
-        <Px name={icon} className="shrink-0 text-moss" />
+        <Px name={icon} className="shrink-0 text-zinc-400" />
       )}
       <span className={cx("min-w-0 truncate", running ? "shimmer-text font-medium" : row.ok === false ? "text-rose-700" : "text-zinc-600")}>{row.label}</span>
       {row.ok === false && row.detail ? <span className="min-w-0 flex-1 truncate text-[12px] text-rose-500/80">{row.detail}</span> : <span className="flex-1" />}
@@ -179,7 +238,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
 
 function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: "question" }>; live: boolean; onAnswer: (t: string) => void }) {
   return (
-    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-lime-deep">
+    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-moss">
       <p className="eyebrow flex items-center gap-1.5 !text-zinc-600">{live ? <><Spinner /> Waiting for you</> : "Question"}</p>
       <p className="mt-1 text-[14.5px] leading-relaxed whitespace-pre-wrap text-zinc-900">{event.text}</p>
       {event.answer ? (
@@ -208,8 +267,8 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
   const [error, setError] = useState<string>();
   if (!live) {
     return (
-      <div className="rise flex min-h-9 items-center gap-2.5 rounded-lg bg-zinc-900/[0.04] px-3 py-1.5 text-[13px] text-zinc-700">
-        <Px name="key" className="shrink-0 opacity-70" />
+      <div className="rise flex min-h-8 items-center gap-2.5 py-1 text-[13px] text-zinc-600">
+        <Px name="key" className="shrink-0 text-zinc-400" />
         <span className="min-w-0 flex-1 truncate">
           {event.outcome === "saved"
             ? `Login for ${event.site} saved to the vault`
@@ -226,11 +285,9 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
     );
   }
   return (
-    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-lime-deep">
+    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-moss">
       <div className="flex items-start gap-3 px-1">
-        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-lime">
-          <Px name="key" className="text-moss" />
-        </div>
+        <Px name="key" className="mt-1.5 text-zinc-500" />
         <div className="min-w-0 flex-1">
           <p className="eyebrow flex items-center gap-1.5 !text-zinc-600"><Spinner /> Login needed</p>
           <p className="mt-0.5 text-[14.5px] leading-relaxed text-zinc-900">{`Add the login for ${event.site} to the vault`}</p>
@@ -294,10 +351,10 @@ function Summary({ text, run }: { text: string; run: Run }) {
 function Metric({ href, label, value, tone }: { href: string; label: string; value: number; tone?: "amber" }) {
   return (
     <Link href={href} className="press group rounded-lg bg-zinc-900/[0.04] px-3 py-3 hover:bg-zinc-900/[0.07]">
-      <Odometer value={String(value).padStart(2, "0")} className={cx("font-pixel text-[28px]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
+      <Odometer value={String(value).padStart(2, "0")} className={cx("text-[26px] font-semibold tracking-[-0.04em]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
       <p className="eyebrow mt-2 flex items-center justify-between">
         {label}
-        <Px name="next" scale={1.5} className="transition-transform group-hover:translate-x-0.5" />
+        <Px name="next" scale={1} className="transition-transform group-hover:translate-x-0.5" />
       </p>
     </Link>
   );
