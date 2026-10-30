@@ -2,10 +2,10 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Download, Search, X } from "lucide-react";
 import { api, docTypeLabel, money, shortDate } from "@/lib/client/api";
 import type { FinancialDocument } from "@/lib/types";
 import { DocStatus } from "./doc-status";
+import { Px } from "./pixel-icon";
 import { Button, Empty, PageHeader, Panel, Segmented, cx, inputClass } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
@@ -45,7 +45,7 @@ export function DocumentsView() {
         />
         <div className="flex flex-wrap items-center gap-3 px-8 pb-4">
           <div className="relative w-64">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-zinc-400" />
+            <Px name="search" className="pointer-events-none absolute top-1/2 left-3 size-3 -translate-y-1/2 text-zinc-400" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Vendor, number or PO" className={cx(inputClass, "pl-8")} />
           </div>
           <Segmented<StatusFilter>
@@ -154,7 +154,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         </div>
         <DocStatus status={doc.status} />
         <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-900/5 hover:text-zinc-800" title="Close">
-          <X className="size-4" />
+          <Px name="x" className="size-3" />
         </button>
       </div>
 
@@ -238,7 +238,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         <span className="flex-1" />
         {doc.fileName ? (
           <a href={`/api/files/${doc.id}?download`} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13.5px] font-medium text-zinc-600 hover:bg-zinc-900/5 hover:text-zinc-900">
-            <Download className="size-3.5" />
+            <Px name="download" className="size-3" />
             Download
           </a>
         ) : null}

@@ -28,7 +28,7 @@ export function Button({
       className={cx(
         "press inline-flex items-center justify-center gap-1.5 rounded-lg font-medium disabled:cursor-not-allowed disabled:opacity-45",
         size === "sm" ? "h-8 px-3 text-[13px]" : "h-9 px-3.5 text-[13.5px]",
-        variant === "primary" && "bg-zinc-900 text-zinc-50 hover:bg-zinc-800 [&:hover_.btn-arrow]:translate-x-0.5",
+        variant === "primary" && "bg-moss text-[#f1f4ec] hover:bg-moss-2 [&:hover_.btn-arrow]:translate-x-0.5",
         variant === "secondary" && "bg-[#fffefb] text-zinc-800 shadow-[0_0_0_1px_rgb(28_27_24/0.1)] hover:shadow-[0_0_0_1px_rgb(28_27_24/0.22)]",
         variant === "ghost" && "text-zinc-600 hover:bg-zinc-900/[0.05] hover:text-zinc-900",
         variant === "danger" && "text-rose-700 hover:bg-rose-500/10",

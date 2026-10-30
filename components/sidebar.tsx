@@ -9,7 +9,7 @@ import { useWorkspace } from "./workspace-provider";
 
 export function Sidebar() {
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col bg-sunk px-3 pt-4 pb-3">
+    <aside className="flex w-[248px] shrink-0 flex-col bg-moss px-3 pt-4 pb-3 text-moss-ink">
       <Suspense fallback={<div className="flex-1" />}>
         <SidebarInner />
       </Suspense>
@@ -23,13 +23,13 @@ function NavLink({ href, active, index, label, count }: { href: string; active: 
       href={href}
       className={cx(
         "press group relative flex h-9 items-center gap-3 rounded-lg px-3 text-[13.5px]",
-        active ? "bg-[#fffefb] font-medium text-zinc-900 shadow-[0_0_0_1px_rgb(28_27_24/0.06)]" : "text-zinc-600 hover:bg-zinc-900/[0.045] hover:text-zinc-900"
+        active ? "bg-white/[0.07] font-medium text-white" : "text-moss-ink hover:bg-white/[0.045] hover:text-white"
       )}
     >
-      <span className={cx("absolute top-2 bottom-2 left-0 w-[3px] rounded-r-full bg-lime-deep transition-transform duration-200", active ? "scale-y-100" : "scale-y-0")} />
-      <span className={cx("font-mono text-[10.5px] tracking-wider", active ? "text-zinc-500" : "text-zinc-400")}>{index}</span>
+      <span className={cx("absolute top-2 bottom-2 left-0 w-[3px] rounded-r-full bg-lime transition-transform duration-200", active ? "scale-y-100" : "scale-y-0")} />
+      <span className={cx("font-mono text-[10.5px] tracking-wider", active ? "text-lime" : "text-moss-dim")}>{index}</span>
       <span className="flex-1">{label}</span>
-      {count ? <span className="rounded-[4px] bg-zinc-900 px-1.5 py-px font-mono text-[10.5px] text-zinc-50">{String(count).padStart(2, "0")}</span> : null}
+      {count ? <span className="rounded-[4px] bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{String(count).padStart(2, "0")}</span> : null}
     </Link>
   );
 }
@@ -55,7 +55,7 @@ function SidebarInner() {
         href="/"
         className={cx(
           "press group flex h-10 items-center gap-2.5 rounded-lg px-3 text-[13.5px] font-medium",
-          path === "/" && !currentRun ? "bg-zinc-900 text-zinc-50" : "bg-zinc-900/[0.06] text-zinc-800 hover:bg-zinc-900 hover:text-zinc-50"
+          path === "/" && !currentRun ? "bg-lime text-moss" : "bg-white/[0.07] text-[#eef2ea] hover:bg-lime hover:text-moss"
         )}
       >
         <span className="font-mono text-[13px] leading-none">+</span>
@@ -69,12 +69,12 @@ function SidebarInner() {
         ))}
       </nav>
 
-      <p className="eyebrow mt-8 mb-2 flex items-center px-3">
+      <p className="eyebrow mt-8 mb-2 flex items-center px-3 !text-moss-dim">
         <span className="flex-1">Tasks</span>
-        <span className="text-zinc-300">[{String(runs.length).padStart(2, "0")}]</span>
+        <span className="text-[#4a5c50]">[{String(runs.length).padStart(2, "0")}]</span>
       </p>
       <div className="scroll-thin -mx-1 flex-1 overflow-y-auto px-1">
-        {runs.length === 0 ? <p className="px-3 py-2 font-mono text-[11.5px] text-zinc-400">no tasks yet</p> : null}
+        {runs.length === 0 ? <p className="px-3 py-2 font-mono text-[11.5px] text-moss-dim">no tasks yet</p> : null}
         {runs.map((r) => {
           const live = ["starting", "running", "waiting"].includes(r.status);
           return (
@@ -83,20 +83,20 @@ function SidebarInner() {
               href={`/?run=${r.id}`}
               className={cx(
                 "press group flex flex-col rounded-lg px-3 py-2",
-                currentRun === r.id ? "bg-[#fffefb] shadow-[0_0_0_1px_rgb(28_27_24/0.06)]" : "hover:bg-zinc-900/[0.045]"
+                currentRun === r.id ? "bg-white/[0.07]" : "hover:bg-white/[0.045]"
               )}
             >
-              <span className={cx("line-clamp-2 text-[13px] leading-snug", currentRun === r.id ? "text-zinc-900" : "text-zinc-700")}>{r.title}</span>
-              <span className="mt-1 flex items-center gap-1.5 font-mono text-[10.5px] tracking-wide text-zinc-400 uppercase">
-                {live ? <Spinner className={r.status === "waiting" ? "text-amber-700" : "text-zinc-600"} /> : null}
+              <span className={cx("line-clamp-2 text-[13px] leading-snug", currentRun === r.id ? "text-white" : "text-moss-ink")}>{r.title}</span>
+              <span className="mt-1 flex items-center gap-1.5 font-mono text-[10.5px] tracking-wide text-moss-dim uppercase">
+                {live ? <Spinner className={r.status === "waiting" ? "text-[#e8b24a]" : "text-lime"} /> : null}
                 {r.status === "waiting" ? (
-                  <span className="text-amber-700">Needs input</span>
+                  <span className="text-[#e8b24a]">Needs input</span>
                 ) : r.status === "failed" ? (
-                  <span className="text-rose-600">Failed</span>
+                  <span className="text-[#e58a74]">Failed</span>
                 ) : r.status === "stopped" ? (
                   <span>Stopped</span>
                 ) : live ? (
-                  <span className="text-zinc-600">Working</span>
+                  <span className="text-lime">Working</span>
                 ) : (
                   <span>{ago(r.updatedAt)}</span>
                 )}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { Px } from "./pixel-icon";
 import { api, docTypeLabel, money, shortDate } from "@/lib/client/api";
 import type { FinancialDocument, LedgerEntry } from "@/lib/types";
 import { AsciiBar, Button, Odometer, PageHeader, Panel, Pill, type Tone, cx } from "./ui";
@@ -56,7 +56,7 @@ export function LedgerView() {
           <>
             <input ref={file} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => e.target.files?.[0] && void importCsv(e.target.files[0])} />
             <Button onClick={() => file.current?.click()}>
-              <Upload className="size-3.5" />
+              <Px name="upload" className="size-3" />
               Import ledger CSV
             </Button>
           </>

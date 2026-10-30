@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Px } from "./pixel-icon";
 import { api, type WorkspaceState } from "@/lib/client/api";
 import type { Provider, PublicPortal } from "@/lib/types";
 import { Button, PageHeader, Panel, Segmented, cx, inputClass } from "./ui";
@@ -135,13 +135,13 @@ export function SettingsView() {
                     {p.vaultId ? "Login in vault" : "No login saved"}
                   </Link>
                   <Button variant="danger" onClick={() => setPortals((all) => all.filter((x) => x.key !== p.key))} title="Remove portal">
-                    <Trash2 className="size-3.5" />
+                    <Px name="trash" className="size-3" />
                   </Button>
                 </div>
               </Panel>
             ))}
             <Button className="self-start" onClick={() => setPortals((all) => [...all, { key: `new-${Date.now()}`, name: "", url: "" }])}>
-              <Plus className="size-3.5" />
+              <Px name="plus" className="size-2.5" />
               Add portal
             </Button>
           </div>
@@ -220,7 +220,7 @@ function ModelPicker({ options, value, onChange }: { options: { id: string; labe
             onClick={() => onChange(o.id)}
             className={cx(
               "press rounded-lg px-3.5 py-2.5 text-left",
-              o.id === value ? "bg-zinc-900 text-zinc-50" : "bg-zinc-900/[0.04] text-zinc-800 hover:bg-zinc-900/[0.07]"
+              o.id === value ? "bg-moss text-[#eef2ea]" : "bg-zinc-900/[0.04] text-zinc-800 hover:bg-zinc-900/[0.07]"
             )}
           >
             <p className="text-[13px] font-medium">{o.label}</p>

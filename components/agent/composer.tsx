@@ -77,7 +77,7 @@ export function Composer({
           <button
             onClick={onStop}
             title="Stop"
-            className="press flex h-8 items-center gap-2 rounded-lg bg-zinc-900 px-3 font-mono text-[11px] tracking-wider text-zinc-50 uppercase hover:bg-zinc-800"
+            className="press flex h-8 items-center gap-2 rounded-lg bg-moss px-3 font-mono text-[11px] tracking-wider text-[#f1f4ec] uppercase hover:bg-moss-2"
           >
             <span className="size-2 bg-zinc-50" />
             Stop
@@ -87,7 +87,7 @@ export function Composer({
             onClick={() => void submit()}
             disabled={!value.trim() || sending}
             title="Send"
-            className="press flex h-8 items-center gap-2 rounded-lg bg-zinc-900 px-3 font-mono text-[11px] tracking-wider text-zinc-50 uppercase hover:bg-lime hover:text-zinc-900 disabled:bg-zinc-900/[0.07] disabled:text-zinc-400"
+            className="press flex h-8 items-center gap-2 rounded-lg bg-moss px-3 font-mono text-[11px] tracking-wider text-lime uppercase hover:bg-lime hover:text-moss disabled:bg-zinc-900/[0.07] disabled:text-zinc-400"
           >
             {sending ? "Sending" : "Run"}
             <span aria-hidden>→</span>

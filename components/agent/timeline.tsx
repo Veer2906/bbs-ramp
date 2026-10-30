@@ -2,24 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  AlertTriangle,
-  ArrowDownToLine,
-  BookOpen,
-  ChevronDown,
-  FileCheck2,
-  FileSearch,
-  FileText,
-  Globe,
-  KeyRound,
-  Link2,
-  ListChecks,
-  MousePointerClick,
-  Keyboard,
-  Camera,
-  CornerDownLeft,
-  X,
-} from "lucide-react";
+import { Px, type PixelName } from "../pixel-icon";
 import { api } from "@/lib/client/api";
 import type { Run, RunEvent } from "@/lib/types";
 import { useWorkspace } from "../workspace-provider";
@@ -46,25 +29,25 @@ function group(events: RunEvent[]): Item[] {
   return out;
 }
 
-const ICONS: Record<string, typeof Globe> = {
-  goto: Globe,
-  click: MousePointerClick,
-  type: Keyboard,
-  fill_credential: KeyRound,
-  request_credentials: KeyRound,
-  select: ListChecks,
-  check: ListChecks,
-  press: CornerDownLeft,
-  screenshot: Camera,
-  download_url: ArrowDownToLine,
-  save_page_as_pdf: ArrowDownToLine,
-  read_document: FileSearch,
-  list_files: FileText,
-  record_document: FileText,
-  get_ledger: BookOpen,
-  match_document: Link2,
-  flag_issue: AlertTriangle,
-  update_plan: ListChecks,
+const ICONS: Record<string, PixelName> = {
+  goto: "globe",
+  click: "cursor",
+  type: "keyboard",
+  fill_credential: "key",
+  request_credentials: "key",
+  select: "list",
+  check: "check",
+  press: "enter",
+  screenshot: "camera",
+  download_url: "download",
+  save_page_as_pdf: "download",
+  read_document: "search",
+  list_files: "doc",
+  record_document: "doc",
+  get_ledger: "ledger",
+  match_document: "link",
+  flag_issue: "alert",
+  update_plan: "list",
 };
 
 export function Timeline({ run, live, onAnswer }: { run: Run; live: boolean; onAnswer: (text: string) => void }) {
@@ -94,7 +77,7 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
     case "user":
       return (
         <div className="rise flex justify-end">
-          <div className="max-w-[85%] rounded-[10px] rounded-br-[3px] bg-zinc-900 px-4 py-2.5 text-[14px] text-zinc-50 leading-relaxed whitespace-pre-wrap">{e.text}</div>
+          <div className="max-w-[85%] rounded-[10px] rounded-br-[3px] bg-moss px-4 py-2.5 text-[14px] text-[#eef2ea] leading-relaxed whitespace-pre-wrap">{e.text}</div>
         </div>
       );
     case "note":
@@ -127,7 +110,7 @@ function ActionGroup({ rows, active }: { rows: Row[]; active: boolean }) {
     <div className="rise flex flex-col">
       {hidden ? (
         <button onClick={() => setOpen(true)} className="mb-1 flex h-7 items-center gap-1.5 self-start rounded-lg px-1 text-[12.5px] text-zinc-500 hover:text-zinc-800">
-          <ChevronDown className="size-3.5" />
+          <Px name="chevron" className="size-2.5" />
           {hidden} earlier {hidden === 1 ? "step" : "steps"}
         </button>
       ) : null}
@@ -155,7 +138,7 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
     );
   }
   if (row.kind === "document" || row.kind === "match" || row.kind === "issue") {
-    const Icon = row.kind === "document" ? FileCheck2 : row.kind === "match" ? Link2 : AlertTriangle;
+    const icon: PixelName = row.kind === "document" ? "docCheck" : row.kind === "match" ? "link" : "alert";
     const href = row.kind === "issue" ? "/issues" : row.kind === "document" ? `/documents?doc=${row.documentId}` : "/ledger";
     return (
       <Link
@@ -169,21 +152,21 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
               : "bg-zinc-900/[0.035] text-zinc-800 hover:bg-zinc-900/[0.06]"
         )}
       >
-        <Icon className="size-3.5 shrink-0 opacity-70" />
+        <Px name={icon} className="size-3 shrink-0 opacity-80" />
         <span className="min-w-0 flex-1 truncate">{row.label}</span>
         <span className="font-mono text-[10px] tracking-wider uppercase opacity-50">{row.kind === "document" ? "doc" : row.kind}</span>
       </Link>
     );
   }
-  const Icon = ICONS[row.tool] ?? Globe;
+  const icon = ICONS[row.tool] ?? "globe";
   return (
     <div className="group flex min-h-8 items-center gap-2.5 px-1 text-[13px]">
       {running ? (
         <Spinner className="w-3.5 text-[12px] text-zinc-700" />
       ) : row.ok === false ? (
-        <X className="size-3.5 shrink-0 text-rose-500" />
+        <Px name="x" className="size-3 shrink-0 text-rose-500" />
       ) : (
-        <Icon className="size-3.5 shrink-0 text-zinc-400" />
+        <Px name={icon} className="size-3 shrink-0 text-zinc-400" />
       )}
       <span className={cx("min-w-0 truncate", running ? "shimmer-text font-medium" : row.ok === false ? "text-rose-700" : "text-zinc-600")}>{row.label}</span>
       {row.ok === false && row.detail ? <span className="min-w-0 flex-1 truncate text-[12px] text-rose-500/80">{row.detail}</span> : <span className="flex-1" />}
@@ -207,7 +190,7 @@ function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: 
             <button
               key={o}
               onClick={() => onAnswer(o)}
-              className="press rounded-lg bg-zinc-900/[0.055] px-3 py-1.5 text-left text-[13px] font-medium text-zinc-800 hover:bg-zinc-900 hover:text-zinc-50"
+              className="press rounded-lg bg-zinc-900/[0.055] px-3 py-1.5 text-left text-[13px] font-medium text-zinc-800 hover:bg-moss hover:text-lime"
             >
               {o}
             </button>
@@ -226,7 +209,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
   if (!live) {
     return (
       <div className="rise flex min-h-9 items-center gap-2.5 rounded-lg bg-zinc-900/[0.04] px-3 py-1.5 text-[13px] text-zinc-700">
-        <KeyRound className="size-3.5 shrink-0 opacity-70" />
+        <Px name="key" className="size-3 shrink-0 opacity-70" />
         <span className="min-w-0 flex-1 truncate">
           {event.outcome === "saved"
             ? `Login for ${event.site} saved to the vault`
@@ -246,7 +229,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
     <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-lime-deep">
       <div className="flex items-start gap-3 px-1">
         <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-lime">
-          <KeyRound className="size-4 text-zinc-900" />
+          <Px name="key" className="size-3.5 text-moss" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="eyebrow flex items-center gap-1.5 !text-zinc-600"><Spinner /> Login needed</p>

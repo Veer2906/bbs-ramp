@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus } from "lucide-react";
+import { Px } from "./pixel-icon";
 import { api, ago, type VaultDraft } from "@/lib/client/api";
 import type { PublicVaultEntry, VaultStatus } from "@/lib/types";
 import { Button, Empty, PageHeader, Panel, Pill, inputClass } from "./ui";
@@ -36,7 +36,7 @@ export function VaultView() {
         subtitle="Logins the agent signs in with. Passwords are encrypted before they are stored, and the agent types them without ever seeing them."
         actions={
           <Button variant="primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
-            <Plus className="size-3.5" />
+            <Px name="plus" className="size-2.5" />
             Add login
           </Button>
         }
@@ -78,7 +78,7 @@ export function VaultView() {
           ) : (
             <Panel key={e.id} className="flex items-center gap-4 px-5 py-4">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900/[0.055] font-mono text-[12px] text-zinc-500">
-                <KeyRound className="size-4" />
+                <Px name="key" className="size-3.5" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-medium text-zinc-900">{e.name}</p>
