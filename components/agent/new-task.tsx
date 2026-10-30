@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type WorkspaceState } from "@/lib/client/api";
 import { Scramble, Spinner, cx } from "../ui";
+import { PixelStairs, Px } from "../pixel-icon";
 import { useWorkspace } from "../workspace-provider";
 import { Composer } from "./composer";
 
@@ -71,15 +72,16 @@ export function NewTask() {
   const model = s ? (s.provider === "bedrock" ? s.bedrockModel : s.anthropicModel) : undefined;
 
   return (
-    <div className="scroll-thin flex h-full flex-col overflow-y-auto">
+    <div className="scroll-thin relative flex h-full flex-col overflow-y-auto">
+      <PixelStairs heights={[1, 1, 2, 3, 4, 6]} block={22} className="pointer-events-none absolute right-0 bottom-0" />
       <div className="m-auto w-full max-w-[700px] px-6 py-16">
         <Tape />
         <p className="eyebrow mt-10">
           <span className="text-zinc-300">[00] </span>
           <Scramble text="New task" />
         </p>
-        <h1 className="mt-3 font-serif text-[44px] leading-[1.02] font-normal tracking-[-0.025em] text-zinc-900">
-          What should I <em className="italic">retrieve</em>?
+        <h1 className="mt-3 flex flex-wrap items-center gap-x-3 text-[46px] leading-[1.02] font-semibold tracking-[-0.045em] text-zinc-900">
+          What should I <Px name="download" scale={4} className="text-moss" /> retrieve?
         </h1>
         <p className="mt-3 max-w-[520px] text-[14px] leading-relaxed text-zinc-500">
           Describe the documents in plain words. The agent signs in to each vendor portal, downloads what it finds, and reconciles it against your ledger.
@@ -106,7 +108,7 @@ export function NewTask() {
             >
               <span className="font-mono text-[10.5px] text-zinc-300 group-hover:text-zinc-500">{String(i + 1).padStart(2, "0")}</span>
               <span className="flex-1">{q}</span>
-              <span className="font-mono text-[12px] text-zinc-400 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100">→</span>
+              <Px name="next" scale={1.5} className="text-zinc-500 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100" />
             </button>
           ))}
         </div>
@@ -133,7 +135,7 @@ function Tape() {
   const row = TAPE.map((t, i) => (
     <span key={i} className="flex items-center gap-6">
       <span>{t}</span>
-      <span className="text-zinc-300">{i % 3 === 2 ? "⇢ ledger" : "→"}</span>
+      <span className="text-zinc-300">{i % 3 === 2 ? "» ledger" : "»"}</span>
     </span>
   ));
   return (

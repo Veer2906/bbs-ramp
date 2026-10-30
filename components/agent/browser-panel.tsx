@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { duration } from "@/lib/client/api";
 import type { Run } from "@/lib/types";
+import { Px } from "../pixel-icon";
 import { AsciiBar, Odometer, Spinner, cx } from "../ui";
 import type { Frame } from "./use-run";
 
@@ -38,7 +39,7 @@ export function BrowserPanel({ run, frame, live }: { run: Run; frame?: Frame; li
           <span className="font-mono text-[11px] text-zinc-400">{">"}</span>
           <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-zinc-600">{frame?.url || run.browser?.url || "about:blank"}</span>
           {live ? (
-            <span className="flex items-center gap-1.5 rounded-[4px] bg-lime px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-zinc-900 uppercase">
+            <span className="flex items-center gap-1.5 bg-lime px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-zinc-900 uppercase">
               <span className="caret">▮</span>
               Live
             </span>
@@ -46,13 +47,13 @@ export function BrowserPanel({ run, frame, live }: { run: Run; frame?: Frame; li
             <span className="font-mono text-[10px] tracking-wider text-zinc-400 uppercase">Idle</span>
           )}
         </div>
-        <div className="relative aspect-[1280/860] overflow-hidden bg-zinc-100">
+        <div className={cx("relative aspect-[1280/860] overflow-hidden", frame ? "bg-zinc-100" : "px-checker")}>
           {frame ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={`data:image/jpeg;base64,${frame.image}`} alt={frame.title || "Browser"} className="absolute inset-0 size-full object-cover object-top" />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 font-mono text-[11px] tracking-wide text-zinc-400 uppercase">
-              {live ? <Spinner className="text-[16px] text-zinc-500" /> : <span className="text-[16px]">∅</span>}
+              {live ? <Spinner className="text-[16px] text-zinc-500" /> : <Px name="globe" scale={4} className="mb-1 text-moss" />}
               <span>{live ? "Waiting for the browser" : "No browser activity"}</span>
             </div>
           )}
