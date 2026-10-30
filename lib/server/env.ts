@@ -16,4 +16,9 @@ export const env = {
   awsRegion: () => pick("AWS_REGION", "AWS_DEFAULT_REGION") ?? "us-east-1",
   sailApp: () => pick("SAIL_APP") ?? "ledger-agent",
   dataDir: () => pick("AGENT_DATA_DIR") ?? `${process.cwd()}/.data`,
+  supabaseUrl: () => pick("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+  supabaseKey: () => pick("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE"),
+  supabaseDbUrl: () => pick("SUPABASE_DB_URL", "DATABASE_URL"),
+  supabaseBucket: () => pick("SUPABASE_BUCKET") ?? "documents",
+  vaultKey: () => pick("VAULT_KEY"),
 };

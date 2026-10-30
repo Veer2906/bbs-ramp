@@ -68,12 +68,40 @@ export interface Portal {
   id: string;
   name: string;
   url: string;
-  username: string;
-  password: string;
   notes?: string;
 }
 
-export type PublicPortal = Omit<Portal, "password"> & { hasPassword: boolean };
+export type PublicPortal = Portal & { vaultId?: string };
+
+export interface VaultEntry {
+  id: string;
+  name: string;
+  url: string;
+  username: string;
+  /** AES-256-GCM ciphertext, never sent to the browser or the model. */
+  passwordCiphertext?: string;
+  createdAt: number;
+  updatedAt: number;
+  lastUsedAt?: number;
+}
+
+export type PublicVaultEntry = Omit<VaultEntry, "passwordCiphertext"> & { hasPassword: boolean };
+
+export interface VaultStatus {
+  cipher: "AES-256-GCM";
+  keySource: "env" | "file";
+  keyOk: boolean;
+  storage: StorageKind;
+}
+
+export type StorageKind = "supabase" | "local";
+
+export interface StorageStatus {
+  kind: StorageKind;
+  ok: boolean;
+  target: string;
+  message?: string;
+}
 
 export type Provider = "anthropic" | "bedrock";
 
@@ -88,6 +116,7 @@ export interface Settings {
 export type PublicSettings = Omit<Settings, "portals"> & {
   portals: PublicPortal[];
   available: { anthropic: boolean; bedrock: boolean; sail: boolean };
+  storage: StorageStatus;
 };
 
 export interface PlanStep {
@@ -105,6 +134,18 @@ export type RunEvent =
   | { id: number; t: number; kind: "match"; documentId: string; ledgerId: string; label: string }
   | { id: number; t: number; kind: "issue"; issueId: string; label: string; severity: Issue["severity"] }
   | { id: number; t: number; kind: "question"; qid: string; text: string; options: string[]; answer?: string }
+  | {
+      id: number;
+      t: number;
+      kind: "credential";
+      rid: string;
+      site: string;
+      url: string;
+      reason: string;
+      usernameHint?: string;
+      outcome?: "saved" | "skipped";
+      vaultId?: string;
+    }
   | { id: number; t: number; kind: "status"; text: string }
   | { id: number; t: number; kind: "error"; text: string }
   | { id: number; t: number; kind: "summary"; text: string };

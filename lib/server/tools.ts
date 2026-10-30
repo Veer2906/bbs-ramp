@@ -48,16 +48,16 @@ export const TOOLS: Tool[] = [
   {
     name: "fill_credential",
     description:
-      "Type a stored portal credential into a field without revealing it. Use this for every login instead of typing secrets.",
+      "Type a login from the vault into a field without revealing it. Use this for every login instead of typing secrets. If you omit vault_id, the vault entry matching the current page is used.",
     input_schema: {
       type: "object",
       properties: {
         ref,
-        portal_id: { type: "string" },
+        vault_id: { type: "string" },
         field: { type: "string", enum: ["username", "password"] },
         submit: { type: "boolean" },
       },
-      required: ["ref", "portal_id", "field"],
+      required: ["ref", "field"],
     },
   },
   {
@@ -201,9 +201,24 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    name: "request_credentials",
+    description:
+      "You hit a login with no vault entry, or the stored login was rejected. Shows the user a secure form to save the login to the encrypted vault, then waits. Returns the new vault_id for fill_credential, or tells you the user skipped. Never ask for passwords any other way.",
+    input_schema: {
+      type: "object",
+      properties: {
+        site_name: { type: "string", description: "Vendor or site name, e.g. Acme Industrial Parts" },
+        login_url: { type: "string", description: "The login page URL" },
+        reason: { type: "string", description: "One short sentence, e.g. 'No saved login for this portal' or 'The saved password was rejected'" },
+        username_hint: { type: "string", description: "What the username field is called on the page, if unusual (account number, customer ID)" },
+      },
+      required: ["site_name", "login_url", "reason"],
+    },
+  },
+  {
     name: "ask_human",
     description:
-      "Ask the user a question and wait for the answer. Only for decisions you cannot make from the evidence (missing credentials, MFA codes, genuinely ambiguous instructions). Offer short options when possible.",
+      "Ask the user a question and wait for the answer. Only for decisions you cannot make from the evidence (MFA codes, genuinely ambiguous instructions). Never for passwords or logins: use request_credentials. Offer short options when possible.",
     input_schema: {
       type: "object",
       properties: { question: { type: "string" }, options: { type: "array", items: { type: "string" } } },

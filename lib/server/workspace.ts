@@ -52,7 +52,7 @@ function setStatus(s: WorkspaceStatus) {
 }
 
 async function provision(): Promise<string> {
-  const state = store.readState<BoxState>(STATE, {});
+  const state = await store.readState<BoxState>(STATE, {});
   let boxId = state.sailboxId;
   if (boxId) {
     try {
@@ -70,16 +70,16 @@ async function provision(): Promise<string> {
     const info = await sail.create(app.id, "ledger-agent-browser", `ledger-agent-${Date.now()}`);
     if (info.status === "failed") throw new Error(`Sailbox failed to start: ${info.error_message ?? "unknown"}`);
     boxId = info.sailbox_id;
-    store.writeState(STATE, { sailboxId: boxId });
+    await store.writeState(STATE, { sailboxId: boxId });
   }
   const rt = runtime();
-  const current = store.readState<BoxState>(STATE, {});
+  const current = await store.readState<BoxState>(STATE, {});
   if (current.runtimeHash !== rt.hash) {
     setStatus({ state: "provisioning", sailboxId: boxId, message: "Installing browser runtime (first run takes about a minute)" });
     await Promise.all(rt.files.map((f) => sail.writeFile(boxId!, `/opt/agent/${f.name}`, f.data)));
     const r = await sail.exec(boxId, "bash /opt/agent/bootstrap.sh", 900);
     if (!r.stdout.includes("READY")) throw new Error(`Sailbox bootstrap failed: ${(r.stdout + r.stderr).slice(-600)}`);
-    store.writeState(STATE, { sailboxId: boxId, runtimeHash: rt.hash });
+    await store.writeState(STATE, { sailboxId: boxId, runtimeHash: rt.hash });
   } else {
     const ping = await rawAction(boxId, { action: "ping" }, 10);
     if (!ping.ok) {
@@ -108,11 +108,13 @@ export function ensureWorkspace(): Promise<string> {
 }
 
 export function workspaceStatus(): WorkspaceStatus {
-  if (ws.status.state === "idle") {
-    const s = store.readState<BoxState>(STATE, {});
-    return { state: "idle", sailboxId: s.sailboxId };
-  }
   return ws.status;
+}
+
+export async function savedWorkspace(): Promise<WorkspaceStatus> {
+  if (ws.status.state !== "idle") return ws.status;
+  const s = await store.readState<BoxState>(STATE, {}).catch(() => ({}) as BoxState);
+  return { state: "idle", sailboxId: s.sailboxId };
 }
 
 async function rawAction(boxId: string, action: Record<string, unknown>, timeout = 60): Promise<BrowserReply> {

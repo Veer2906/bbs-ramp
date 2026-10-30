@@ -21,9 +21,11 @@ import {
   CornerDownLeft,
   X,
 } from "lucide-react";
+import { api } from "@/lib/client/api";
 import type { Run, RunEvent } from "@/lib/types";
 import { useWorkspace } from "../workspace-provider";
-import { cx } from "../ui";
+import { Button, cx } from "../ui";
+import { EntryForm } from "../vault-view";
 
 type Row = Extract<RunEvent, { kind: "action" | "document" | "match" | "issue" | "status" }>;
 type Item = { kind: "group"; rows: Row[]; key: number } | { kind: "single"; event: RunEvent; key: number };
@@ -50,6 +52,7 @@ const ICONS: Record<string, typeof Globe> = {
   click: MousePointerClick,
   type: Keyboard,
   fill_credential: KeyRound,
+  request_credentials: KeyRound,
   select: ListChecks,
   check: ListChecks,
   press: CornerDownLeft,
@@ -93,6 +96,8 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
       );
     case "note":
       return <p className="rise text-[14.5px] leading-relaxed whitespace-pre-wrap text-zinc-800">{e.text}</p>;
+    case "credential":
+      return <CredentialRequest event={e} runId={run.id} live={live && run.status === "waiting" && !e.outcome} />;
     case "question":
       return <Question event={e} live={live && run.status === "waiting" && !e.answer} onAnswer={onAnswer} />;
     case "error":
@@ -207,6 +212,75 @@ function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: 
       ) : live ? (
         <p className="mt-3 text-[12.5px] text-zinc-500">Reply below</p>
       ) : null}
+    </div>
+  );
+}
+
+function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { kind: "credential" }>; runId: string; live: boolean }) {
+  const [skipping, setSkipping] = useState(false);
+  const [error, setError] = useState<string>();
+  if (!live) {
+    return (
+      <div className="rise flex min-h-9 items-center gap-2.5 rounded-xl bg-zinc-900/[0.035] px-3 py-1.5 text-[13px] text-zinc-700">
+        <KeyRound className="size-3.5 shrink-0 opacity-70" />
+        <span className="min-w-0 flex-1 truncate">
+          {event.outcome === "saved"
+            ? `Login for ${event.site} saved to the vault`
+            : event.outcome === "skipped"
+              ? `Skipped the login for ${event.site}`
+              : `Login for ${event.site} was not added`}
+        </span>
+        {event.outcome === "saved" ? (
+          <Link href="/vault" className="text-[12.5px] text-zinc-500 hover:text-zinc-900">
+            Vault
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+  return (
+    <div className="rise rounded-2xl bg-white p-4 shadow-[0_0_0_1px_rgba(217,119,6,0.25),0_8px_24px_-16px_rgba(217,119,6,0.5)]">
+      <div className="flex items-start gap-3 px-1">
+        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/12">
+          <KeyRound className="size-4 text-amber-800" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-medium text-amber-700">Login needed</p>
+          <p className="mt-0.5 text-[14.5px] leading-relaxed text-zinc-900">{`Add the login for ${event.site} to the vault`}</p>
+          {event.reason ? <p className="mt-0.5 text-[13px] text-zinc-500">{event.reason}</p> : null}
+        </div>
+      </div>
+      <div className="mt-3 [&>div]:p-0 [&>div]:shadow-none">
+        <EntryForm
+          initial={{ name: event.site, url: event.url }}
+          usernameLabel={event.usernameHint || "Username"}
+          submitLabel="Save to vault and continue"
+          onSave={async (d) => {
+            await api.answerCredential(runId, { rid: event.rid, action: "save", ...d });
+          }}
+        />
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <p className="flex-1 text-[12px] text-zinc-400">Encrypted before it is stored. The agent never sees the password.</p>
+        {error ? <span className="text-[12px] text-rose-600">{error}</span> : null}
+        <Button
+          size="sm"
+          variant="ghost"
+          loading={skipping}
+          onClick={async () => {
+            setSkipping(true);
+            try {
+              await api.answerCredential(runId, { rid: event.rid, action: "skip" });
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setSkipping(false);
+            }
+          }}
+        >
+          Skip this portal
+        </Button>
+      </div>
     </div>
   );
 }

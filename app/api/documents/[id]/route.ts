@@ -10,16 +10,16 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/documents/[id]
   const patch: Partial<FinancialDocument> = {};
   for (const k of EDITABLE) if (k in input) Object.assign(patch, { [k]: input[k] });
   if (patch.status === "approved" && patch.ledgerId === undefined) {
-    const doc = store.documents().find((d) => d.id === id);
+    const doc = (await store.documents()).find((d) => d.id === id);
     if (doc?.ledgerId) patch.matchConfidence = "exact";
   }
-  const doc = store.updateDocument(id, patch);
+  const doc = await store.updateDocument(id, patch);
   if (!doc) return fail("Document not found", 404);
   return json(doc);
 }
 
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/documents/[id]">) {
   const { id } = await ctx.params;
-  store.saveDocuments(store.documents().filter((d) => d.id !== id));
+  await store.deleteDocument(id);
   return json({ ok: true });
 }
