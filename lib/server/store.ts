@@ -1,5 +1,5 @@
 import "server-only";
-import type { FinancialDocument, Issue, LedgerEntry, Portal, Run, Settings, StorageStatus, VaultEntry } from "../types";
+import type { FinancialDocument, Issue, LedgerEntry, MemoryNode, Portal, Run, Settings, StorageStatus, VaultEntry } from "../types";
 import { seal } from "./crypto";
 import { StorageSetupError, type Backend } from "./db/backend";
 import { localBackend } from "./db/local";
@@ -64,6 +64,7 @@ async function seed(b: Backend) {
     }
     await b.setState("seeded", true);
   }
+  if ((await b.getState("memory")) == null) await b.setState("memory", demoMemory());
   const legacy = stored?.portals?.filter((p) => p.password || p.username);
   if (legacy?.length) {
     const vault = await b.vault();
@@ -72,6 +73,18 @@ async function seed(b: Backend) {
     }
     await b.setState("settings", { ...stored, portals: stored!.portals!.map(({ username: _u, password: _p, ...rest }) => (void [_u, _p], rest)) });
   }
+}
+
+function demoMemory(): MemoryNode[] {
+  const now = Date.now();
+  const n = (key: string, kind: MemoryNode["kind"], title: string, detail: string, links: string[] = []): MemoryNode => ({ id: `mem_${key}`, kind, title, detail, links: links.map((l) => `mem_${l}`), source: "user", createdAt: now, updatedAt: now });
+  return [
+    n("close", "date", "Month-end close", "Books close on the last business day of each month. Retrieve and reconcile that month's documents before then."),
+    n("northwind", "vendor", "Northwind Office Supply", "Invoice list is paginated; documents are PDFs."),
+    n("contoso", "vendor", "Contoso Freight Lines", "Account CF-88213. Frameset portal with separate freight bill and PO searches."),
+    n("acme", "vendor", "Acme Industrial Parts", "Shows a notice that must be acknowledged after sign-in; invoices are printable HTML pages."),
+    n("ap", "rule", "Flag partial payments", "Treat a payment receipt that covers less than its invoice as an amount mismatch.", ["close"]),
+  ];
 }
 
 export function newVaultEntry(name: string, url: string, username: string, password?: string): VaultEntry {
@@ -99,6 +112,14 @@ export const store = {
   },
   async saveSettings(s: Settings) {
     await (await ready()).setState("settings", s);
+  },
+
+  /** Active memory lives in the app_state table (Supabase) or app_state.json (local) under the "memory" key. */
+  async memory(): Promise<MemoryNode[]> {
+    return (await (await ready()).getState<MemoryNode[]>("memory")) ?? [];
+  },
+  async saveMemory(nodes: MemoryNode[]) {
+    await (await ready()).setState("memory", nodes);
   },
 
   async ledger(): Promise<LedgerEntry[]> {

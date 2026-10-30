@@ -216,6 +216,22 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    name: "remember",
+    description:
+      "Save a durable fact to active memory so every future task sees it: key dates (close dates, payment terms deadlines), key invoices (disputed, large, recurring), vendor quirks (portal layout, account numbers, contacts), and user preferences or rules. Only save facts that will matter beyond this task; never save passwords. Saving a title that already exists updates it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["date", "invoice", "vendor", "rule", "note"] },
+        title: { type: "string", description: "Short name, e.g. 'October close' or 'AC-INV-2307'" },
+        detail: { type: "string", description: "One or two sentences with the specifics" },
+        link_titles: { type: "array", items: { type: "string" }, description: "Titles of related memory nodes, e.g. the vendor of an invoice" },
+        id: { type: "string", description: "Existing memory id to update" },
+      },
+      required: ["kind", "title", "detail"],
+    },
+  },
+  {
     name: "ask_human",
     description:
       "Ask the user a question and wait for the answer. Only for decisions you cannot make from the evidence (MFA codes, genuinely ambiguous instructions). Never for passwords or logins: use request_credentials. Offer short options when possible.",

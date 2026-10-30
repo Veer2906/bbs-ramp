@@ -53,9 +53,7 @@
   --color-moss-ink: #a8b5a6;
   --color-moss-dim: #66796b;
 
-  --font-sans: "TWK Lausanne", var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Burgess", var(--font-newsreader), ui-serif, Georgia, serif;
-  --font-pixel: var(--font-silkscreen), var(--font-geist-mono), monospace;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 
   /* Square corners everywhere, like Mistral's grid. */
   --radius-xs: 0px;
@@ -77,7 +75,7 @@ body {
   background: var(--color-paper);
   color: var(--color-zinc-900);
   font-family: var(--font-sans);
-  letter-spacing: -0.005em;
+  letter-spacing: -0.011em;
 }
 
 ::selection {
@@ -122,11 +120,6 @@ select:focus-visible {
   box-shadow: 0 0 0 1px var(--color-zinc-200);
 }
 
-/* Checkerboard of soft greens, like Mistral's pixel tiles. */
-.px-checker {
-  background: repeating-conic-gradient(#e9f1df 0 25%, #f3f7ec 0 50%) 0 0 / 28px 28px;
-}
-
 /* Hard offset shadow, no blur: an 8-bit button. */
 .px-shadow {
   box-shadow: 3px 3px 0 0 var(--color-leaf-deep);
@@ -136,19 +129,46 @@ select:focus-visible {
   transform: translate(2px, 2px);
 }
 
-@keyframes stair {
+/* Thinking tree: the rail draws downward, each branch fades in after it. */
+@keyframes rail {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.tree-rail {
+  transform-origin: top;
+  animation: rail 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes branch {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateX(-4px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-.stair-block {
-  display: block;
-  animation: stair 320ms steps(3, end) both;
+.tree-node {
+  animation: branch 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Collapsible region that animates its height via grid rows. */
+.fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 320ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms;
+}
+.fold[data-closed="true"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.fold > * {
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Buttons sink a pixel when pressed, like a key. */
@@ -262,7 +282,8 @@ select:focus-visible {
   .scanline,
   .tape,
   .caret,
-  .stair-block,
+  .tree-rail,
+  .tree-node,
   .spin-ascii::before {
     animation: none;
   }

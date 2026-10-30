@@ -39,3 +39,11 @@ Access is server-only with the service-role key; RLS is enabled with no policies
 
 ## One run at a time
 There is one browser, so one active run. Starting another while one is running returns 409 and the UI says so.
+
+## Active memory
+
+Facts the user wants every task to know (key dates, important invoices, vendor quirks, rules) are stored as a small graph of nodes with optional links, and the whole list goes into the system prompt of every run. At the expected size (tens of facts) putting everything in the prompt is cheaper and more reliable than retrieval, and it stays inside the cached prompt prefix. The user edits memory directly on the Memory page; the agent adds or updates facts with a `remember` tool, which upserts by title so it does not create near-duplicates, and its facts are labelled so the user can review them. Memory is one JSON value under the `memory` key in `app_state`, so it needs no extra migration and is readable in the Supabase table editor. The graph draws explicit links plus implied ones (a fact whose text mentions another fact's title).
+
+## Run view: a collapsible thinking tree
+
+Each instruction is shown as a turn: the message, then the agent's notes and actions as one tree hanging off a thin rail, then the summary. While the task runs the tree is open and grows as steps arrive; when it finishes it folds into one line ("Worked for 2m 10s, 24 steps") that can be reopened. Logs stay available without pushing the result off screen.

@@ -1,13 +1,14 @@
 import "server-only";
 import path from "node:path";
 import type Anthropic from "@anthropic-ai/sdk";
-import type { FinancialDocument, Issue, LedgerEntry, Run, Settings, VaultEntry } from "../types";
+import type { FinancialDocument, Issue, LedgerEntry, MemoryNode, Run, Settings, VaultEntry } from "../types";
 import { addUsage, llmFor } from "./llm";
 import { mimeFor } from "./mime";
 import { dataChanged, emit, persist, pushFrame, pushRun, runs, updateEvent, type CredentialReply, type Live } from "./runs";
 import { id, store } from "./store";
 import { BROWSER_TOOLS, TOOLS } from "./tools";
 import { matchVault, secretFor } from "./vault";
+import { memoryPrompt, rememberFact } from "./memory";
 import { browser, ensureWorkspace, readBoxFile, workspaceStatus, type BrowserReply } from "./workspace";
 
 type Block = Anthropic.ContentBlockParam;
@@ -21,11 +22,12 @@ const KEEP_IMAGES = 1;
 interface Ctx {
   settings: Settings;
   vault: VaultEntry[];
+  memory: MemoryNode[];
 }
 
 export async function startRun(instruction: string): Promise<Run> {
   if (runs.active()) throw new Error("Another run is in progress. Stop it or wait for it to finish.");
-  const [settings, vault] = await Promise.all([store.settings(), store.vault()]);
+  const [settings, vault, memory] = await Promise.all([store.settings(), store.vault(), store.memory()]);
   if (runs.active()) throw new Error("Another run is in progress. Stop it or wait for it to finish.");
   const { model, provider } = describeModel(settings);
   const run: Run = {
@@ -44,7 +46,7 @@ export async function startRun(instruction: string): Promise<Run> {
   const l = runs.register(run);
   emit(l, { kind: "user", text: instruction });
   persist(l, true);
-  void execute(l, { settings, vault }).catch((e) => fail(l, e));
+  void execute(l, { settings, vault, memory }).catch((e) => fail(l, e));
   return run;
 }
 
@@ -120,7 +122,7 @@ function errorText(e: unknown) {
   return msg.slice(0, 600);
 }
 
-function systemPrompt({ settings, vault }: Ctx) {
+function systemPrompt({ settings, vault, memory }: Ctx) {
   const today = new Date().toISOString().slice(0, 10);
   const portals = settings.portals
     .map((p) => {
@@ -140,6 +142,10 @@ Today is ${today}.
 Vendor portals:
 ${portals || "(none configured)"}
 ${others ? `\nOther saved logins in the vault:\n${others}\n` : ""}
+Active memory (facts the finance team wants you to always keep in mind; edited by the user, so trust it over your assumptions):
+${memoryPrompt(memory)}
+Use these facts when they bear on the task and mention when one changed what you did. When you learn something durable (a key date, an important or disputed invoice, a vendor quirk, a user preference), call remember. Do not re-save facts that are already listed.
+
 Logins: passwords live in an encrypted vault and you never see them. Type them with fill_credential (vault_id + field). When a page asks for a login that has no vault entry, or a saved login is rejected, call request_credentials right away; it shows the user a secure form and returns a vault_id. Never ask for a password in a message or with ask_human, and never type one with the type tool.
 
 How you work
@@ -370,6 +376,8 @@ function labelFor(name: string, a: Record<string, unknown>, ctx: Ctx): string {
       return `Match ${s(a.document_id)} to ${s(a.ledger_id)}`;
     case "flag_issue":
       return `Flag: ${s(a.title)}`;
+    case "remember":
+      return `Remember: ${s(a.title)}`;
     case "ask_human":
       return "Ask you";
     default:
@@ -501,6 +509,17 @@ async function runTool(l: Live, ctx: Ctx, name: string, a: Record<string, unknow
       return matchDocument(l, a);
     case "request_credentials":
       return requestCredentials(l, ctx, a);
+    case "remember": {
+      const { node, updated } = await rememberFact({
+        kind: a.kind as MemoryNode["kind"],
+        title: String(a.title ?? ""),
+        detail: String(a.detail ?? ""),
+        id: a.id ? String(a.id) : undefined,
+        link_titles: Array.isArray(a.link_titles) ? a.link_titles.map(String) : [],
+      });
+      ctx.memory = await store.memory();
+      return text(`${updated ? "Updated" : "Saved"} memory ${node.id}: ${node.title}`);
+    }
     case "flag_issue": {
       const issue = await addIssue(l, {
         kind: a.kind as Issue["kind"],

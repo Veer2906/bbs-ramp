@@ -3,9 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type WorkspaceState } from "@/lib/client/api";
-import { Scramble, Spinner, cx } from "../ui";
-import { PixelStairs, Px } from "../pixel-icon";
+import { api } from "@/lib/client/api";
+import { Px } from "../pixel-icon";
 import { useWorkspace } from "../workspace-provider";
 import { Composer } from "./composer";
 
@@ -21,29 +20,10 @@ export function NewTask() {
   const { settings, refreshRuns } = useWorkspace();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string>();
-  const [box, setBox] = useState<WorkspaceState>();
 
   useEffect(() => {
-    let alive = true;
     // Warm the cloud computer while the user is typing so the first action is instant.
-    api
-      .warmWorkspace()
-      .then((s) => alive && setBox(s))
-      .catch(() => undefined);
-    const t = setInterval(() => {
-      api
-        .workspace()
-        .then((s) => {
-          if (!alive) return;
-          setBox(s);
-          if (s.state === "ready" || s.state === "error") clearInterval(t);
-        })
-        .catch(() => undefined);
-    }, 2000);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
+    api.warmWorkspace().catch(() => undefined);
   }, []);
 
   const s = settings?.settings;
@@ -61,32 +41,14 @@ export function NewTask() {
     }
   };
 
-  const boxLabel =
-    box?.state === "ready"
-      ? "ready"
-      : box?.state === "error"
-        ? (box.message ?? "unavailable")
-        : box?.state === "provisioning"
-          ? (box.message ?? "starting").toLowerCase()
-          : "connecting";
-  const model = s ? (s.provider === "bedrock" ? s.bedrockModel : s.anthropicModel) : undefined;
-
   return (
-    <div className="scroll-thin relative flex h-full flex-col overflow-y-auto">
-      <PixelStairs heights={[1, 1, 2, 3, 4, 6]} block={22} className="pointer-events-none absolute right-0 bottom-0" />
-      <div className="m-auto w-full max-w-[700px] px-6 py-16">
-        <Tape />
-        <p className="eyebrow mt-10">
-          <span className="text-zinc-300">[00] </span>
-          <Scramble text="New task" />
+    <div className="scroll-thin flex h-full flex-col overflow-y-auto">
+      <div className="m-auto w-full max-w-[640px] px-6 py-16">
+        <h1 className="rise text-[32px] leading-tight font-semibold tracking-[-0.035em] text-zinc-900">What should I retrieve?</h1>
+        <p className="rise mt-2 text-[14px] text-zinc-500" style={{ animationDelay: "60ms" }}>
+          Describe the documents. The agent signs in to your vendor portals, downloads them and reconciles them against your ledger.
         </p>
-        <h1 className="mt-3 flex flex-wrap items-center gap-x-3 text-[46px] leading-[1.02] font-semibold tracking-[-0.045em] text-zinc-900">
-          What should I <Px name="download" scale={4} className="text-moss" /> retrieve?
-        </h1>
-        <p className="mt-3 max-w-[520px] text-[14px] leading-relaxed text-zinc-500">
-          Describe the documents in plain words. The agent signs in to each vendor portal, downloads what it finds, and reconciles it against your ledger.
-        </p>
-        <div className="mt-7">
+        <div className="rise mt-7" style={{ animationDelay: "120ms" }}>
           <Composer large autoFocus value={value} onValueChange={setValue} placeholder="Retrieve every October invoice and reconcile it" onSubmit={start} />
           {error ? <p className="mt-2 px-2 text-[12.5px] text-rose-600">{error}</p> : null}
           {s && !providerReady ? (
@@ -98,64 +60,19 @@ export function NewTask() {
             </p>
           ) : null}
         </div>
-
-        <div className="mt-6 flex flex-col">
-          {SUGGESTIONS.map((q, i) => (
+        <div className="rise mt-5 flex flex-col" style={{ animationDelay: "180ms" }}>
+          {SUGGESTIONS.map((q) => (
             <button
               key={q}
               onClick={() => setValue(q)}
-              className="press group flex items-center gap-4 rounded-lg px-3 py-2.5 text-left text-[13.5px] text-zinc-600 hover:bg-zinc-900/[0.045] hover:text-zinc-900"
+              className="group flex items-center gap-3 px-2 py-2 text-left text-[13.5px] text-zinc-500 transition-colors hover:text-zinc-900"
             >
-              <span className="font-mono text-[10.5px] text-zinc-300 group-hover:text-zinc-500">{String(i + 1).padStart(2, "0")}</span>
               <span className="flex-1">{q}</span>
-              <Px name="next" scale={1.5} className="text-zinc-500 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100" />
+              <Px name="next" scale={1} className="text-zinc-400 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100" />
             </button>
           ))}
         </div>
-
-        <div className="mt-10 grid grid-cols-3 gap-3 font-mono text-[10.5px] tracking-wide uppercase">
-          <Readout label="Portals" value={String(s?.portals.length ?? 0).padStart(2, "0")} title={s?.portals.map((p) => p.name).join(", ")} />
-          <Readout
-            label="Sailbox"
-            value={boxLabel}
-            tone={box?.state === "error" ? "bad" : box?.state === "ready" ? "ok" : undefined}
-            busy={!box || box.state === "provisioning" || box.state === "idle"}
-          />
-          <Readout label="Model" value={model ?? "..."} />
-        </div>
       </div>
-    </div>
-  );
-}
-
-const TAPE = ["INV-2315", "PO-4471", "RCPT-0091", "FRT-88213", "INV-2307", "CM-0042", "PO-4502", "INV-2291", "RCPT-0103", "BOL-7710"];
-
-/** Ticker tape of document ids drifting past, set in mono. */
-function Tape() {
-  const row = TAPE.map((t, i) => (
-    <span key={i} className="flex items-center gap-6">
-      <span>{t}</span>
-      <span className="text-zinc-300">{i % 3 === 2 ? "» ledger" : "»"}</span>
-    </span>
-  ));
-  return (
-    <div aria-hidden className="tape-mask overflow-hidden font-mono text-[11px] tracking-wider text-zinc-400 uppercase">
-      <div className="tape flex w-max gap-6">
-        {row}
-        {row}
-      </div>
-    </div>
-  );
-}
-
-function Readout({ label, value, tone, busy, title }: { label: string; value: string; tone?: "ok" | "bad"; busy?: boolean; title?: string }) {
-  return (
-    <div className="min-w-0 rounded-lg bg-zinc-900/[0.04] px-3 py-2.5" title={title}>
-      <p className="text-zinc-400">{label}</p>
-      <p className={cx("mt-1 flex items-center gap-1.5 truncate normal-case", tone === "ok" ? "text-emerald-700" : tone === "bad" ? "text-rose-600" : "text-zinc-700")}>
-        {busy ? <Spinner /> : null}
-        <span className="truncate">{value}</span>
-      </p>
     </div>
   );
 }
