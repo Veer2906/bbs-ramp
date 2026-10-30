@@ -1,31 +1,38 @@
 import type { LedgerEntry, Portal } from "../types";
 
+export interface DemoLogin {
+  portalId: string;
+  username: string;
+  password: string;
+}
+
 // The three sandbox vendors are served from inside the Sailbox (sailbox/portals.py).
 export const DEMO_PORTALS: Portal[] = [
   {
     id: "northwind",
     name: "Northwind Office Supply",
     url: "http://127.0.0.1:8080/northwind/",
-    username: "apclerk",
-    password: "Northwind#2004",
     notes: "Office supplies. Customer extranet; invoices as PDF.",
   },
   {
     id: "contoso",
     name: "Contoso Freight Lines",
     url: "http://127.0.0.1:8080/contoso/",
-    username: "CF-88213",
-    password: "4417",
-    notes: "Freight carrier. Username is the account number, password is the PIN.",
+    notes: "Freight carrier. The login is an account number and a PIN.",
   },
   {
     id: "acme",
     name: "Acme Industrial Parts",
     url: "http://127.0.0.1:8080/acme/",
-    username: "bbs_ap",
-    password: "acme-ap-77",
     notes: "Industrial parts. Invoices, payment receipts and credit memos.",
   },
+];
+
+// Seeded into the vault (encrypted) on first start so the demo runs unattended.
+export const DEMO_LOGINS: DemoLogin[] = [
+  { portalId: "northwind", username: "apclerk", password: "Northwind#2004" },
+  { portalId: "contoso", username: "CF-88213", password: "4417" },
+  { portalId: "acme", username: "bbs_ap", password: "acme-ap-77" },
 ];
 
 export const DEMO_LEDGER: LedgerEntry[] = [

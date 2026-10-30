@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -8,7 +9,7 @@ import type { Provider, PublicPortal } from "@/lib/types";
 import { Button, PageHeader, Panel, Segmented, cx, inputClass } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
-type PortalDraft = Partial<PublicPortal> & { password?: string; key: string };
+type PortalDraft = Partial<PublicPortal> & { key: string };
 
 export function SettingsView() {
   const { settings, setSettings, refreshData, refreshRuns } = useWorkspace();
@@ -50,7 +51,7 @@ export function SettingsView() {
         anthropicModel,
         bedrockModel,
         bedrockRegion,
-        portals: portals.map((p) => ({ id: p.id, name: p.name, url: p.url, username: p.username, password: p.password, notes: p.notes })),
+        portals: portals.map((p) => ({ id: p.id, name: p.name, url: p.url, notes: p.notes })),
       });
       setSettings(next);
       setSaved(true);
@@ -107,7 +108,7 @@ export function SettingsView() {
           </Panel>
         </Section>
 
-        <Section title="Vendor portals" hint="Credentials stay on this server. The agent types them into login forms without ever seeing them.">
+        <Section title="Vendor portals" hint="Sites the agent works through. Their logins live in the vault.">
           <div className="flex flex-col gap-3">
             {portals.map((p) => (
               <Panel key={p.key} className="grid grid-cols-2 gap-3 p-5">
@@ -117,32 +118,28 @@ export function SettingsView() {
                 <Field label="Login URL">
                   <input className={inputClass} value={p.url ?? ""} onChange={(e) => patch(p.key, { url: e.target.value })} placeholder="https://" />
                 </Field>
-                <Field label="Username">
-                  <input className={inputClass} value={p.username ?? ""} onChange={(e) => patch(p.key, { username: e.target.value })} autoComplete="off" />
-                </Field>
-                <Field label="Password">
-                  <input
-                    className={inputClass}
-                    type="password"
-                    value={p.password ?? ""}
-                    onChange={(e) => patch(p.key, { password: e.target.value })}
-                    placeholder={p.hasPassword ? "Saved, type to replace" : "Not set"}
-                    autoComplete="new-password"
-                  />
-                </Field>
                 <div className="col-span-2 flex items-end gap-3">
                   <div className="flex-1">
                     <Field label="Notes for the agent">
                       <input className={inputClass} value={p.notes ?? ""} onChange={(e) => patch(p.key, { notes: e.target.value })} placeholder="Where documents live, quirks, account numbers" />
                     </Field>
                   </div>
+                  <Link
+                    href="/vault"
+                    className={cx(
+                      "flex h-9 shrink-0 items-center rounded-xl px-3 text-[12.5px] font-medium transition-colors",
+                      p.vaultId ? "bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15" : "bg-amber-500/12 text-amber-900 hover:bg-amber-500/20"
+                    )}
+                  >
+                    {p.vaultId ? "Login in vault" : "No login saved"}
+                  </Link>
                   <Button variant="danger" onClick={() => setPortals((all) => all.filter((x) => x.key !== p.key))} title="Remove portal">
                     <Trash2 className="size-3.5" />
                   </Button>
                 </div>
               </Panel>
             ))}
-            <Button className="self-start" onClick={() => setPortals((all) => [...all, { key: `new-${Date.now()}`, name: "", url: "", username: "" }])}>
+            <Button className="self-start" onClick={() => setPortals((all) => [...all, { key: `new-${Date.now()}`, name: "", url: "" }])}>
               <Plus className="size-3.5" />
               Add portal
             </Button>
@@ -164,6 +161,25 @@ export function SettingsView() {
                 Wake now
               </Button>
             ) : null}
+          </Panel>
+        </Section>
+
+        <Section title="Storage" hint="Where documents, the ledger, issues, task history and the vault are kept.">
+          <Panel className="flex items-center justify-between gap-4 p-5">
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-medium text-zinc-900">
+                {settings.settings.storage.kind === "supabase" ? "Supabase" : "This computer"}
+                {settings.settings.storage.ok ? "" : " (not ready)"}
+              </p>
+              <p className="truncate text-[12.5px] text-zinc-500">
+                {settings.settings.storage.kind === "supabase"
+                  ? `${settings.settings.storage.target}, files in a private Storage bucket`
+                  : "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local to use Supabase"}
+              </p>
+            </div>
+            <span className={cx("text-[12.5px]", settings.settings.storage.ok ? "text-emerald-700" : "text-amber-700")}>
+              {settings.settings.storage.ok ? "Connected" : settings.settings.storage.message}
+            </span>
           </Panel>
         </Section>
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { AlertTriangle, FileText, Loader2, BookOpen, Plus, Settings2 } from "lucide-react";
+import { AlertTriangle, FileText, KeyRound, Loader2, BookOpen, Plus, Settings2 } from "lucide-react";
 import { ago } from "@/lib/client/api";
 import { cx } from "./ui";
 import { useWorkspace } from "./workspace-provider";
@@ -30,6 +30,7 @@ function SidebarInner() {
     { href: "/documents", label: "Documents", icon: FileText, count: review || undefined },
     { href: "/ledger", label: "Reconciliation", icon: BookOpen },
     { href: "/issues", label: "Issues", icon: AlertTriangle, count: openIssues || undefined },
+    { href: "/vault", label: "Vault", icon: KeyRound },
   ];
 
   return (

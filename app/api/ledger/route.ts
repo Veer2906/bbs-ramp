@@ -44,7 +44,7 @@ export async function PUT(req: Request) {
       reference: r.reference || undefined,
     }));
   if (!entries.length) return fail("No valid ledger rows");
-  store.saveLedger(entries);
+  await store.saveLedger(entries);
   dataChanged();
   return json(entries);
 }

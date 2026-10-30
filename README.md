@@ -18,7 +18,8 @@ The first task provisions a Sailbox (a persistent cloud computer) and installs C
 - **Documents**: every retrieved document with extracted fields, the original file, and approve/reject.
 - **Reconciliation**: ledger transactions with their supporting documents, coverage, and documents that have no ledger entry. Import your own ledger as CSV (`date,vendor,description,amount,po,reference`).
 - **Issues**: amount mismatches, missing documents, duplicates, unrecorded invoices, access problems. Resolve them or send the agent to investigate.
-- **Settings**: Anthropic API or AWS Bedrock, model choice, vendor portal credentials (write-only; the agent types them without seeing them), Sailbox status, reset.
+- **Vault**: saved logins for vendor portals. Passwords are encrypted (AES-256-GCM) before they are stored and are never shown again, to you or the agent. When the agent reaches a login it has no password for, the task pauses and shows a Vault form; save the login and it carries on, or skip that portal.
+- **Settings**: Anthropic API or AWS Bedrock, model choice, vendor portals, storage status, Sailbox status, reset.
 
 ## Demo portals
 
@@ -32,10 +33,24 @@ The Sailbox also runs three deliberately old-fashioned vendor portals on `127.0.
 
 The seeded data includes exact matches, an invoice that is $36 under the ledger, an invoice missing from the ledger, a ledger entry with no freight bill, and a duplicated payment receipt. Replace the portals in Settings with real ones.
 
+## Storage: Supabase or local files
+
+Without Supabase settings everything is kept in `.data/` on this machine. To use Supabase, add to `.env.local`:
+
+```bash
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...   # server only, never sent to the browser
+SUPABASE_DB_URL=postgresql://...  # optional: lets the app create its tables on start
+```
+
+If you skip `SUPABASE_DB_URL`, paste `supabase/migrations/*.sql` into the Supabase SQL editor once. Documents, ledger, issues, task history, settings and Vault entries go into tables; original files go into a private `documents` Storage bucket. The app shows a banner if Supabase is set but not ready.
+
+Vault encryption key: set `VAULT_KEY` (keep it somewhere safe). Without it the app creates `.data/vault.key`; if that file is lost, saved passwords can't be decrypted and must be re-entered.
+
 ## Layout
 
 - `sailbox/` runs inside the Sailbox: `browserd.py` (persistent Playwright browser behind a small HTTP API), `portals.py` (demo portals), `bootstrap.sh` (idempotent setup).
-- `lib/server/` runs in Next.js: Sail client, workspace manager, agent loop and tools, Anthropic/Bedrock clients, JSON file store.
+- `lib/server/` runs in Next.js: Sail client, workspace manager, agent loop and tools, Anthropic/Bedrock clients, Vault (`vault.ts`, `crypto.ts`), storage backends (`db/local.ts`, `db/supabase.ts`).
 - `app/api/` route handlers; `components/` UI.
 
 Design decisions and their reasoning are in [docs/DESIGN.md](docs/DESIGN.md).

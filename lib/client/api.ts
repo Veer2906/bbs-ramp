@@ -1,4 +1,4 @@
-import type { FinancialDocument, Issue, LedgerEntry, PublicSettings, Run, RunSummary } from "../types";
+import type { FinancialDocument, Issue, LedgerEntry, PublicSettings, PublicVaultEntry, Run, RunSummary, StorageStatus, VaultStatus } from "../types";
 
 export interface ModelOption {
   id: string;
@@ -51,7 +51,21 @@ export const api = {
   warmWorkspace: () => call<WorkspaceState>("/api/workspace", { method: "POST" }),
   importLedger: (csv: string) => call<LedgerEntry[]>("/api/ledger", { method: "PUT", json: { csv } }),
   reset: () => call("/api/reset", { method: "POST" }),
+  storage: () => call<StorageStatus>("/api/storage"),
+  vault: () => call<{ entries: PublicVaultEntry[]; status: VaultStatus }>("/api/vault"),
+  addVault: (e: VaultDraft) => call<PublicVaultEntry>("/api/vault", { method: "POST", json: e }),
+  updateVault: (id: string, e: VaultDraft) => call<PublicVaultEntry>(`/api/vault/${id}`, { method: "PATCH", json: e }),
+  deleteVault: (id: string) => call(`/api/vault/${id}`, { method: "DELETE" }),
+  answerCredential: (runId: string, body: { rid: string; action: "save" | "use" | "skip"; vaultId?: string } & VaultDraft) =>
+    call<{ ok: true; vaultId?: string }>(`/api/runs/${runId}/credential`, { method: "POST", json: body }),
 };
+
+export interface VaultDraft {
+  name?: string;
+  url?: string;
+  username?: string;
+  password?: string;
+}
 
 export const money = (n: number | undefined, currency = "USD") =>
   n === undefined || Number.isNaN(n) ? "—" : n.toLocaleString("en-US", { style: "currency", currency });

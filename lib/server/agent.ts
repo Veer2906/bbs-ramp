@@ -1,12 +1,13 @@
 import "server-only";
-import fs from "node:fs";
 import path from "node:path";
 import type Anthropic from "@anthropic-ai/sdk";
-import type { FinancialDocument, Issue, LedgerEntry, Run, Settings } from "../types";
+import type { FinancialDocument, Issue, LedgerEntry, Run, Settings, VaultEntry } from "../types";
 import { addUsage, llmFor } from "./llm";
-import { dataChanged, emit, persist, pushFrame, pushRun, runs, updateEvent, type Live } from "./runs";
+import { mimeFor } from "./mime";
+import { dataChanged, emit, persist, pushFrame, pushRun, runs, updateEvent, type CredentialReply, type Live } from "./runs";
 import { id, store } from "./store";
 import { BROWSER_TOOLS, TOOLS } from "./tools";
+import { matchVault, secretFor } from "./vault";
 import { browser, ensureWorkspace, readBoxFile, workspaceStatus, type BrowserReply } from "./workspace";
 
 type Block = Anthropic.ContentBlockParam;
@@ -17,9 +18,15 @@ const MAX_TURNS = 90;
 const KEEP_SNAPSHOTS = 4;
 const KEEP_IMAGES = 1;
 
-export function startRun(instruction: string): Run {
+interface Ctx {
+  settings: Settings;
+  vault: VaultEntry[];
+}
+
+export async function startRun(instruction: string): Promise<Run> {
   if (runs.active()) throw new Error("Another run is in progress. Stop it or wait for it to finish.");
-  const settings = store.settings();
+  const [settings, vault] = await Promise.all([store.settings(), store.vault()]);
+  if (runs.active()) throw new Error("Another run is in progress. Stop it or wait for it to finish.");
   const { model, provider } = describeModel(settings);
   const run: Run = {
     id: id("run"),
@@ -37,7 +44,7 @@ export function startRun(instruction: string): Run {
   const l = runs.register(run);
   emit(l, { kind: "user", text: instruction });
   persist(l, true);
-  void execute(l, settings).catch((e) => fail(l, e));
+  void execute(l, { settings, vault }).catch((e) => fail(l, e));
   return run;
 }
 
@@ -56,7 +63,11 @@ export function sendMessage(runId: string, text: string) {
   const l = runs.get(runId);
   if (!l) throw new Error("Run is not active");
   emit(l, { kind: "user", text });
-  if (l.question) {
+  if (l.credential) {
+    const c = l.credential;
+    l.credential = undefined;
+    c.resolve({ skipped: true, note: text });
+  } else if (l.question) {
     const q = l.question;
     l.question = undefined;
     q.resolve(text);
@@ -65,10 +76,24 @@ export function sendMessage(runId: string, text: string) {
   }
 }
 
+/** Called by the credential form: the user saved a login to the vault (or skipped). */
+export function answerCredential(runId: string, rid: string, reply: CredentialReply) {
+  const l = runs.get(runId);
+  if (!l?.credential || l.credential.rid !== rid) throw new Error("This login request is no longer waiting");
+  const c = l.credential;
+  l.credential = undefined;
+  c.resolve(reply);
+}
+
 export function stopRun(runId: string) {
   const l = runs.get(runId);
   if (!l) return;
   l.abort.abort();
+  if (l.credential) {
+    const c = l.credential;
+    l.credential = undefined;
+    c.resolve({ skipped: true });
+  }
   if (l.question) {
     const q = l.question;
     l.question = undefined;
@@ -95,17 +120,27 @@ function errorText(e: unknown) {
   return msg.slice(0, 600);
 }
 
-function systemPrompt(settings: Settings) {
+function systemPrompt({ settings, vault }: Ctx) {
   const today = new Date().toISOString().slice(0, 10);
   const portals = settings.portals
-    .map((p) => `- ${p.name} (portal_id: ${p.id})\n  URL: ${p.url}\n  Username: ${p.username || "(none)"}${p.notes ? `\n  Notes: ${p.notes}` : ""}`)
+    .map((p) => {
+      const v = matchVault(vault, p.url);
+      const login = v ? `vault_id ${v.id}${v.passwordCiphertext ? "" : " (no password saved)"}` : "none saved, call request_credentials when you reach its login";
+      return `- ${p.name}\n  URL: ${p.url}\n  Login: ${login}${p.notes ? `\n  Notes: ${p.notes}` : ""}`;
+    })
+    .join("\n");
+  const others = vault
+    .filter((v) => !settings.portals.some((p) => matchVault([v], p.url)))
+    .map((v) => `- ${v.name}: ${v.url} (vault_id ${v.id})`)
     .join("\n");
   return `You are an accounts payable agent. You operate a persistent cloud computer with a real Chromium browser to retrieve financial documents from legacy vendor portals, extract their data, match them to the company ledger, and flag problems for the finance team.
 
 Today is ${today}.
 
-Vendor portals (log in with fill_credential; never ask the user for a stored password):
+Vendor portals:
 ${portals || "(none configured)"}
+${others ? `\nOther saved logins in the vault:\n${others}\n` : ""}
+Logins: passwords live in an encrypted vault and you never see them. Type them with fill_credential (vault_id + field). When a page asks for a login that has no vault entry, or a saved login is rejected, call request_credentials right away; it shows the user a secure form and returns a vault_id. Never ask for a password in a message or with ask_human, and never type one with the type tool.
 
 How you work
 - Start by calling update_plan with a short plan, then act immediately. Keep the plan current as steps finish.
@@ -126,14 +161,15 @@ For every relevant document
    - duplicate: the same document appears twice or two documents bill the same thing
    - ambiguous: several ledger entries could match
    - access: you cannot log in or reach a page
-Do not stop to ask about findings; flag them and continue. Use ask_human only when you are truly blocked (unknown credentials, MFA code, an instruction that can be read two very different ways).
+Do not stop to ask about findings; flag them and continue. Use ask_human only when you are truly blocked (MFA code, an instruction that can be read two very different ways). If the user skips a login, flag an access issue for that portal and continue with the others.
 
 Scope: retrieve what the instruction asks for. If it is vague ("get last month's invoices"), choose the sensible interpretation, state it in one line, and proceed. When the task covers ledger transactions, check every one in scope for supporting documents.
 
 Communication: before a group of tool calls write at most one short sentence. Finish with the finish tool: a brief summary with counts (retrieved, matched, issues) and what needs human attention. Do not use markdown headings.`;
 }
 
-async function execute(l: Live, settings: Settings) {
+async function execute(l: Live, ctx: Ctx) {
+  const { settings } = ctx;
   const { client, model } = llmFor(settings);
   const signal = l.abort.signal;
   l.run.status = "running";
@@ -155,7 +191,7 @@ async function execute(l: Live, settings: Settings) {
     }
   }
 
-  const system: Anthropic.TextBlockParam[] = [{ type: "text", text: systemPrompt(settings), cache_control: { type: "ephemeral" } }];
+  const system: Anthropic.TextBlockParam[] = [{ type: "text", text: systemPrompt(ctx), cache_control: { type: "ephemeral" } }];
   const tools = TOOLS.map((t, i) => (i === TOOLS.length - 1 ? { ...t, cache_control: { type: "ephemeral" as const } } : t));
   const messages: Msg[] = [{ role: "user", content: [{ type: "text", text: l.run.instruction }] }];
   let nudged = false;
@@ -200,9 +236,9 @@ async function execute(l: Live, settings: Settings) {
         continue;
       }
       const t0 = Date.now();
-      const ev = emit(l, { kind: "action", tool: u.name, label: labelFor(u.name, input, settings) });
+      const ev = emit(l, { kind: "action", tool: u.name, label: labelFor(u.name, input, ctx) });
       try {
-        const out = await runTool(l, settings, u.name, input, i === lastBrowser || !BROWSER_TOOLS.has(u.name));
+        const out = await runTool(l, ctx, u.name, input, i === lastBrowser || !BROWSER_TOOLS.has(u.name));
         if (ev.kind === "action") {
           ev.ok = !out.isError;
           ev.ms = Date.now() - t0;
@@ -285,7 +321,7 @@ function prepare(messages: Msg[]): Msg[] {
   return out;
 }
 
-function labelFor(name: string, a: Record<string, unknown>, settings: Settings): string {
+function labelFor(name: string, a: Record<string, unknown>, ctx: Ctx): string {
   const s = (v: unknown) => String(v ?? "");
   switch (name) {
     case "update_plan":
@@ -297,9 +333,11 @@ function labelFor(name: string, a: Record<string, unknown>, settings: Settings):
     case "type":
       return `Type "${s(a.text).slice(0, 40)}"`;
     case "fill_credential": {
-      const p = settings.portals.find((x) => x.id === a.portal_id);
-      return `Enter ${s(a.field)} for ${p?.name ?? s(a.portal_id)}`;
+      const v = ctx.vault.find((x) => x.id === a.vault_id);
+      return `Enter ${s(a.field)}${v ? ` for ${v.name}` : ""} from the vault`;
     }
+    case "request_credentials":
+      return `Ask you to add a login for ${s(a.site_name)}`;
     case "select":
       return `Select "${s(a.option)}"`;
     case "check":
@@ -356,7 +394,7 @@ function describePage(r: BrowserReply): string {
   return lines.join("\n");
 }
 
-async function browse(l: Live, action: Record<string, unknown>, observe: boolean): Promise<ToolOut> {
+async function browse(l: Live, ctx: Ctx, action: Record<string, unknown>, observe: boolean): Promise<ToolOut> {
   const r = await browser({ ...action, observe, shot: observe }, 60);
   if (r.shot && r.url) pushFrame(l, { image: r.shot, url: r.url, title: r.title ?? "" });
   if (!r.ok) {
@@ -367,10 +405,15 @@ async function browse(l: Live, action: Record<string, unknown>, observe: boolean
     const dl = r.downloads?.length ? ` Downloads: ${r.downloads.map((d) => d.name).join(", ")}` : "";
     return text(`ok.${dl}`);
   }
-  return { content: [{ type: "text", text: describePage(r) }], detail: r.downloads?.length ? r.downloads.map((d) => d.name).join(", ") : undefined };
+  let page = describePage(r);
+  // Proactive login-wall hint: a password field on a page the vault has nothing for.
+  if (r.url && /\binput password\b/.test(r.text ?? "") && !matchVault(ctx.vault, r.url)?.passwordCiphertext) {
+    page += "\n\nNote: this page asks for a password and the vault has no login for it. If you need to sign in, call request_credentials.";
+  }
+  return { content: [{ type: "text", text: page }], detail: r.downloads?.length ? r.downloads.map((d) => d.name).join(", ") : undefined };
 }
 
-async function runTool(l: Live, settings: Settings, name: string, a: Record<string, unknown>, observe: boolean): Promise<ToolOut> {
+async function runTool(l: Live, ctx: Ctx, name: string, a: Record<string, unknown>, observe: boolean): Promise<ToolOut> {
   switch (name) {
     case "update_plan": {
       const steps = Array.isArray(a.steps) ? a.steps : [];
@@ -382,32 +425,33 @@ async function runTool(l: Live, settings: Settings, name: string, a: Record<stri
       return text("Plan saved.");
     }
     case "goto":
-      return browse(l, { action: "goto", url: a.url }, observe);
+      return browse(l, ctx, { action: "goto", url: a.url }, observe);
     case "click":
-      return browse(l, { action: "click", ref: a.ref }, observe);
+      return browse(l, ctx, { action: "click", ref: a.ref }, observe);
     case "type":
-      return browse(l, { action: "type", ref: a.ref, text: a.text, submit: a.submit }, observe);
+      return browse(l, ctx, { action: "type", ref: a.ref, text: a.text, submit: a.submit }, observe);
     case "fill_credential": {
-      const p = settings.portals.find((x) => x.id === a.portal_id);
-      if (!p) return text(`Unknown portal_id ${String(a.portal_id)}`, true);
-      const value = a.field === "password" ? p.password : p.username;
-      if (!value) return text(`No ${String(a.field)} stored for ${p.name}. Ask the user to add it in settings.`, true);
-      return browse(l, { action: "type", ref: a.ref, text: value, submit: a.submit }, observe);
+      const field = a.field === "password" ? "password" : "username";
+      const entry = a.vault_id ? ctx.vault.find((x) => x.id === a.vault_id) : matchVault(ctx.vault, l.run.browser?.url ?? "");
+      if (!entry) return text(`${a.vault_id ? `Unknown vault_id ${String(a.vault_id)}` : "No vault entry matches this page"}. Call request_credentials.`, true);
+      const value = await secretFor(entry, field);
+      if (!value) return text(`The vault entry ${entry.name} has no ${field}. Call request_credentials.`, true);
+      return browse(l, ctx, { action: "type", ref: a.ref, text: value, submit: a.submit }, observe);
     }
     case "select":
-      return browse(l, { action: "select", ref: a.ref, value: a.option }, observe);
+      return browse(l, ctx, { action: "select", ref: a.ref, value: a.option }, observe);
     case "check":
-      return browse(l, { action: "check", ref: a.ref, checked: a.checked ?? true }, observe);
+      return browse(l, ctx, { action: "check", ref: a.ref, checked: a.checked ?? true }, observe);
     case "press":
-      return browse(l, { action: "press", key: a.key }, observe);
+      return browse(l, ctx, { action: "press", key: a.key }, observe);
     case "scroll":
-      return browse(l, { action: "scroll", direction: a.direction }, observe);
+      return browse(l, ctx, { action: "scroll", direction: a.direction }, observe);
     case "back":
-      return browse(l, { action: "back" }, observe);
+      return browse(l, ctx, { action: "back" }, observe);
     case "switch_tab":
-      return browse(l, { action: "tab", index: a.index }, observe);
+      return browse(l, ctx, { action: "tab", index: a.index }, observe);
     case "wait":
-      return browse(l, { action: "wait", seconds: a.seconds }, observe);
+      return browse(l, ctx, { action: "wait", seconds: a.seconds }, observe);
     case "screenshot": {
       const r = await browser({ action: "screenshot" });
       if (!r.ok || !r.image) return text(`Error: ${r.error ?? "no screenshot"}`, true);
@@ -452,11 +496,13 @@ async function runTool(l: Live, settings: Settings, name: string, a: Record<stri
     case "record_document":
       return recordDocument(l, a);
     case "get_ledger":
-      return text(ledgerView(a));
+      return text(await ledgerView(a));
     case "match_document":
       return matchDocument(l, a);
+    case "request_credentials":
+      return requestCredentials(l, ctx, a);
     case "flag_issue": {
-      const issue = addIssue(l, {
+      const issue = await addIssue(l, {
         kind: a.kind as Issue["kind"],
         severity: (a.severity as Issue["severity"]) ?? "medium",
         title: String(a.title ?? ""),
@@ -466,8 +512,16 @@ async function runTool(l: Live, settings: Settings, name: string, a: Record<stri
       });
       return text(issue.existed ? `Already flagged as ${issue.id}; not added again.` : `Issue ${issue.id} recorded.`);
     }
-    case "ask_human":
-      return askHuman(l, String(a.question ?? ""), Array.isArray(a.options) ? a.options.map(String) : []);
+    case "ask_human": {
+      const q = String(a.question ?? "");
+      // Logins never go through chat: turn a password question into the vault form.
+      if (/\b(password|passcode|pin|credentials?|log ?in|sign ?in|username)\b/i.test(q)) {
+        const url = l.run.browser?.url ?? "";
+        const portal = ctx.settings.portals.find((p) => url.startsWith(p.url.replace(/[^/]*$/, "")));
+        return requestCredentials(l, ctx, { site_name: portal?.name ?? hostOf(url), login_url: url, reason: q });
+      }
+      return askHuman(l, q, Array.isArray(a.options) ? a.options.map(String) : []);
+    }
     default:
       return text(`Unknown tool ${name}`, true);
   }
@@ -481,7 +535,7 @@ async function recordDocument(l: Live, a: Record<string, unknown>): Promise<Tool
   const vendor = String(a.vendor ?? "").trim();
   const number = String(a.number ?? "").trim();
   const type = a.type as FinancialDocument["type"];
-  const docs = store.documents();
+  const docs = await store.documents();
   const dup = docs.find((d) => d.type === type && norm(d.number) === norm(number) && vendorKey(d.vendor) === vendorKey(vendor));
   if (dup) {
     return text(
@@ -512,7 +566,8 @@ async function recordDocument(l: Live, a: Record<string, unknown>): Promise<Tool
   if (doc.sailPath) {
     try {
       const buf = await readBoxFile(doc.sailPath);
-      fs.writeFileSync(path.join(store.filesDir(), `${doc.id}${path.extname(fileName) || ".bin"}`), buf);
+      const ext = path.extname(fileName) || ".bin";
+      await store.putFile(`${doc.id}${ext}`, buf, mimeFor(ext));
     } catch (e) {
       warnings.push(`could not copy the file to the repository (${errorText(e).slice(0, 120)})`);
       doc.fileName = undefined;
@@ -522,16 +577,16 @@ async function recordDocument(l: Live, a: Record<string, unknown>): Promise<Tool
   if (doc.lineItems.length && doc.amount !== undefined && Math.abs(lineSum - doc.amount) > 0.01) {
     warnings.push(`line items sum to ${lineSum.toFixed(2)} but the total is ${doc.amount.toFixed(2)}; check for tax, freight or a misread total`);
   }
-  store.saveDocuments([...docs, doc]);
+  await store.insertDocument(doc);
   emit(l, { kind: "document", documentId: doc.id, label: `${typeLabel(doc.type)} ${doc.number} · ${doc.vendor}${doc.amount !== undefined ? ` · ${money(doc.amount)}` : ""}` });
   dataChanged(l);
-  const hint = suggestLedger(doc);
+  const hint = await suggestLedger(doc);
   return text(`Recorded as ${doc.id}.${warnings.length ? ` Warning: ${warnings.join("; ")}.` : ""}${hint ? `\n${hint}` : ""}`);
 }
 
-function suggestLedger(doc: FinancialDocument) {
+async function suggestLedger(doc: FinancialDocument) {
   if (doc.type === "purchase_order") return "";
-  const ledger = store.ledger().filter((e) => vendorKey(e.vendor) === vendorKey(doc.vendor));
+  const ledger = (await store.ledger()).filter((e) => vendorKey(e.vendor) === vendorKey(doc.vendor));
   const hits = ledger.filter(
     (e) =>
       (doc.poNumber && norm(e.poNumber) === norm(doc.poNumber)) ||
@@ -542,11 +597,10 @@ function suggestLedger(doc: FinancialDocument) {
   return `Likely ledger candidates: ${hits.map((e) => `${e.id} (${e.date}, ${money(e.amount)}${e.poNumber ? `, ${e.poNumber}` : ""}${e.reference ? `, ref ${e.reference}` : ""})`).join("; ")}`;
 }
 
-function ledgerView(a: Record<string, unknown>) {
-  const docs = store.documents();
+async function ledgerView(a: Record<string, unknown>) {
+  const [docs, ledger] = await Promise.all([store.documents(), store.ledger()]);
   const vk = a.vendor ? vendorKey(String(a.vendor)) : "";
-  const entries = store
-    .ledger()
+  const entries = ledger
     .filter((e) => !vk || vendorKey(e.vendor).startsWith(vk) || vk.startsWith(vendorKey(e.vendor)))
     .filter((e) => (!a.from || e.date >= String(a.from)) && (!a.to || e.date <= String(a.to)));
   if (!entries.length) return "No ledger entries match.";
@@ -558,10 +612,10 @@ function ledgerView(a: Record<string, unknown>) {
     .join("\n");
 }
 
-function matchDocument(l: Live, a: Record<string, unknown>): ToolOut {
-  const docs = store.documents();
+async function matchDocument(l: Live, a: Record<string, unknown>): Promise<ToolOut> {
+  const [docs, ledger] = await Promise.all([store.documents(), store.ledger()]);
   const doc = docs.find((d) => d.id === a.document_id);
-  const entry = store.ledger().find((e) => e.id === a.ledger_id);
+  const entry = ledger.find((e) => e.id === a.ledger_id);
   if (!doc) return text(`Unknown document_id ${String(a.document_id)}`, true);
   if (!entry) return text(`Unknown ledger_id ${String(a.ledger_id)}`, true);
   const confidence = (a.confidence as FinancialDocument["matchConfidence"]) ?? "probable";
@@ -572,7 +626,7 @@ function matchDocument(l: Live, a: Record<string, unknown>): ToolOut {
   const others = docs.filter((d) => d.id !== doc.id && d.ledgerId === entry.id && d.type === doc.type && !supporting);
   if (others.length) {
     status = "needs_review";
-    const issue = addIssue(l, {
+    const issue = await addIssue(l, {
       kind: "duplicate",
       severity: "high",
       title: `${entry.id} already has ${typeLabel(doc.type).toLowerCase()} ${others.map((o) => o.number).join(", ")}`,
@@ -587,7 +641,7 @@ function matchDocument(l: Live, a: Record<string, unknown>): ToolOut {
   if (doc.type === "invoice" && doc.amount !== undefined && Math.abs(doc.amount - entry.amount) > 0.01) {
     status = "needs_review";
     const diff = doc.amount - entry.amount;
-    const issue = addIssue(l, {
+    const issue = await addIssue(l, {
       kind: "amount_mismatch",
       severity: Math.abs(diff) > 100 || Math.abs(diff) / entry.amount > 0.02 ? "high" : "medium",
       title: `${doc.vendor} ${doc.number} is ${money(Math.abs(diff))} ${diff > 0 ? "over" : "under"} the ledger`,
@@ -602,7 +656,7 @@ function matchDocument(l: Live, a: Record<string, unknown>): ToolOut {
     notes.push(`PO ${doc.poNumber} differs from ledger ${entry.poNumber}`);
   }
   const note = [a.note ? String(a.note) : "", ...notes].filter(Boolean).join("; ") || undefined;
-  store.updateDocument(doc.id, { ledgerId: entry.id, matchConfidence: confidence, status, notes: [doc.notes, note].filter(Boolean).join("; ") || undefined });
+  await store.updateDocument(doc.id, { ledgerId: entry.id, matchConfidence: confidence, status, notes: [doc.notes, note].filter(Boolean).join("; ") || undefined });
   emit(l, {
     kind: "match",
     documentId: doc.id,
@@ -613,10 +667,8 @@ function matchDocument(l: Live, a: Record<string, unknown>): ToolOut {
   return text(`Matched ${doc.id} to ${entry.id} (${status}).${notes.length ? ` ${notes.join("; ")}.` : ""}`);
 }
 
-function addIssue(l: Live, i: Omit<Issue, "id" | "runId" | "status" | "createdAt">): Issue & { existed?: boolean } {
-  const same = store
-    .issues()
-    .find(
+async function addIssue(l: Live, i: Omit<Issue, "id" | "runId" | "status" | "createdAt">): Promise<Issue & { existed?: boolean }> {
+  const same = (await store.issues()).find(
       (x) =>
         x.status === "open" &&
         x.kind === i.kind &&
@@ -624,14 +676,65 @@ function addIssue(l: Live, i: Omit<Issue, "id" | "runId" | "status" | "createdAt
     );
   if (same) return { ...same, existed: true };
   const issue: Issue = { ...i, id: id("iss"), runId: l.run.id, status: "open", createdAt: Date.now() };
-  store.saveIssues([...store.issues(), issue]);
-  for (const d of issue.documentIds) {
-    const doc = store.documents().find((x) => x.id === d);
-    if (doc && doc.status !== "approved" && doc.status !== "rejected") store.updateDocument(d, { status: "needs_review" });
+  await store.insertIssue(issue);
+  if (issue.documentIds.length) {
+    const docs = await store.documents();
+    for (const d of issue.documentIds) {
+      const doc = docs.find((x) => x.id === d);
+      if (doc && doc.status !== "approved" && doc.status !== "rejected") await store.updateDocument(d, { status: "needs_review" });
+    }
   }
   emit(l, { kind: "issue", issueId: issue.id, label: issue.title, severity: issue.severity });
   dataChanged(l);
   return issue;
+}
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "this site";
+  }
+};
+
+async function requestCredentials(l: Live, ctx: Ctx, a: Record<string, unknown>): Promise<ToolOut> {
+  const rid = id("cred");
+  const ev = emit(l, {
+    kind: "credential",
+    rid,
+    site: String(a.site_name ?? "") || hostOf(String(a.login_url ?? "")),
+    url: String(a.login_url ?? l.run.browser?.url ?? ""),
+    reason: String(a.reason ?? ""),
+    usernameHint: a.username_hint ? String(a.username_hint) : undefined,
+  });
+  l.run.status = "waiting";
+  pushRun(l);
+  persist(l, true);
+  const reply = await new Promise<CredentialReply>((resolve) => {
+    l.credential = { rid, resolve };
+  });
+  if (l.abort.signal.aborted) throw new Error("stopped");
+  l.run.status = "running";
+  pushRun(l);
+  if ("vaultId" in reply) {
+    ctx.vault = await store.vault();
+    const entry = ctx.vault.find((v) => v.id === reply.vaultId);
+    if (ev.kind === "credential") {
+      ev.outcome = "saved";
+      ev.vaultId = reply.vaultId;
+      updateEvent(l, ev);
+    }
+    return text(`The user saved a login to the vault as ${reply.vaultId}${entry ? ` (${entry.name})` : ""}. Sign in with fill_credential vault_id=${reply.vaultId} for the username and the password.`);
+  }
+  if (ev.kind === "credential") {
+    ev.outcome = "skipped";
+    updateEvent(l, ev);
+  }
+  return text(
+    reply.note
+      ? `The user did not add a login and wrote: ${reply.note}`
+      : "The user skipped this login. Flag an access issue for this portal and continue with the rest of the task."
+  );
 }
 
 async function askHuman(l: Live, question: string, options: string[]): Promise<ToolOut> {

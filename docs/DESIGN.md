@@ -21,17 +21,21 @@ Each browser action returns a compact text snapshot of the page (all frames, inc
 ## Models: Anthropic API or Bedrock
 Both go through the Anthropic TypeScript SDK's Messages interface: `@anthropic-ai/sdk` for the API and `@anthropic-ai/bedrock-sdk` for Bedrock (bearer token `AWS_BEARER_TOKEN_BEDROCK` or the standard AWS credential chain). Inference-profile ids such as `global.anthropic.claude-sonnet-4-6` use the InvokeModel client; plain `anthropic.claude-*` ids use the Claude-in-Bedrock (Mantle) client. The model is chosen in Settings; any id can be typed in.
 
-## Credentials never reach the model
-Portal passwords are stored server-side and are write-only in the UI. The model calls `fill_credential(portal_id, field, ref)` and the server types the value, so secrets never appear in prompts, logs or run history.
+## Credentials never reach the model: the Vault
+Logins live in the Vault, not in Settings. Each password is encrypted with AES-256-GCM (Node `crypto`, random 12-byte IV, entry id bound as additional authenticated data so ciphertext can't be swapped between entries). The key comes from `VAULT_KEY` or a generated `.data/vault.key` (mode 0600), and is never stored next to the ciphertext, so a leaked database alone doesn't reveal passwords. The UI is write-only: the API returns only `hasPassword`.
+
+The model sees Vault entries as id, name, URL and username. It calls `fill_credential(vault_id, field, ref)`; the server decrypts and types the value into the Sailbox browser, so secrets never appear in prompts, tool results, logs or run history. When there's no matching entry, or the saved one is rejected, the model calls `request_credentials`; the run pauses and the timeline shows a Vault form. `ask_human` is explicitly not for passwords, and page observations flag password fields with no saved login so the model asks proactively. Skipping a login lets the run continue with other portals and records an access issue.
 
 ## Matching and validation are code, judgement is the model's
 The model extracts fields from the actual document (`read_document` gives PDF text, or an image for scans) and decides which ledger entry a document supports. Deterministic checks run in code when it records or matches: duplicate document numbers, line items not summing to the total, invoice total vs ledger amount, PO mismatch, and two invoices on one ledger entry. Those create issues automatically, so the model doesn't need to remember to.
 
 ## Human in the loop
-The agent asks (`ask_human`) only when it is blocked: unknown credentials, MFA codes, or a truly ambiguous instruction. Everything else becomes an issue so the run keeps going. Users can also send guidance mid-run; it's injected into the next model turn. Documents can be approved or rejected and issues resolved, or handed back to the agent with "Investigate".
+The agent asks (`ask_human`) only when it is blocked: MFA codes, or a truly ambiguous instruction. Everything else becomes an issue so the run keeps going. Users can also send guidance mid-run; it's injected into the next model turn. Documents can be approved or rejected and issues resolved, or handed back to the agent with "Investigate".
 
-## Storage
-A JSON file store under `.data/` (documents, issues, ledger, settings, runs) plus the original files in `.data/files/`. It keeps `npm run dev` a one-command setup. The store is behind one module (`lib/server/store.ts`) so swapping in a database later touches one file.
+## Storage: Supabase, with local files as fallback
+All persistence goes through one `Backend` interface (`lib/server/db/backend.ts`) with two implementations. `local.ts` keeps JSON files under `.data/`, so `npm run dev` works with no setup. `supabase.ts` is used when `SUPABASE_URL` and a service-role key are set: one table per collection (`ledger_entries`, `documents`, `issues`, `runs`, `vault_entries`, plus `app_state` for settings), and original files in a private `documents` Storage bucket. Rows keep the domain fields as columns so the data is readable in the Supabase table editor and queryable with SQL.
+
+Access is server-only with the service-role key; RLS is enabled with no policies, so the anon key can read nothing. The schema is a plain migration (`supabase/migrations/`); if `SUPABASE_DB_URL` is set the app applies it on start (idempotent `create ... if not exists`), otherwise the storage banner says what to run. Run saves are serialized per run so a slow older write can't overwrite a newer one.
 
 ## One run at a time
 There is one browser, so one active run. Starting another while one is running returns 409 and the UI says so.

@@ -7,15 +7,19 @@ import { store } from "@/lib/server/store";
 
 export async function GET() {
   await connection();
-  const saved = store.runs().map((r) => runs.load(r.id) ?? r);
-  return json(saved.map(summarize));
+  try {
+    const saved = await store.runs();
+    return json(saved.map((r) => summarize(runs.get(r.id)?.run ?? r)));
+  } catch (e) {
+    return fail(e, 503);
+  }
 }
 
 export async function POST(req: Request) {
   const { instruction } = await body<{ instruction: string }>(req);
   if (!instruction?.trim()) return fail("Write an instruction first");
   try {
-    return json(summarize(startRun(instruction.trim())));
+    return json(summarize(await startRun(instruction.trim())));
   } catch (e) {
     return fail(e, 409);
   }

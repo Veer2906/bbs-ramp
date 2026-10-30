@@ -1,33 +1,13 @@
 import "server-only";
-import fs from "node:fs";
-import path from "node:path";
+import type { FinancialDocument, Issue, LedgerEntry, Portal, Run, Settings, StorageStatus, VaultEntry } from "../types";
+import { seal } from "./crypto";
+import { StorageSetupError, type Backend } from "./db/backend";
+import { localBackend } from "./db/local";
+import { supabaseBackend } from "./db/supabase";
+import { DEMO_LEDGER, DEMO_LOGINS, DEMO_PORTALS } from "./demo";
 import { env } from "./env";
-import type { FinancialDocument, Issue, LedgerEntry, Run, Settings } from "../types";
-import { DEMO_LEDGER, DEMO_PORTALS } from "./demo";
 
-const dir = () => env.dataDir();
-
-function ensureDir(p: string) {
-  fs.mkdirSync(p, { recursive: true });
-}
-
-function readJson<T>(file: string, fallback: () => T): T {
-  try {
-    return JSON.parse(fs.readFileSync(file, "utf8")) as T;
-  } catch {
-    return fallback();
-  }
-}
-
-function writeJson(file: string, value: unknown) {
-  ensureDir(path.dirname(file));
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
-  fs.renameSync(tmp, file);
-}
-
-export const id = (prefix: string) =>
-  `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+export const id = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 const defaultSettings = (): Settings => ({
   provider: "anthropic",
@@ -37,81 +17,161 @@ const defaultSettings = (): Settings => ({
   portals: DEMO_PORTALS,
 });
 
+type G = { __store?: { config: string; backend: Backend; ready?: Promise<void>; error?: string } };
+const g = globalThis as G;
+
+function current() {
+  const url = env.supabaseUrl();
+  const key = env.supabaseKey();
+  const config = url && key ? `supabase:${url}:${key.slice(-6)}:${env.supabaseBucket()}` : `local:${env.dataDir()}`;
+  if (g.__store?.config !== config) {
+    const backend =
+      url && key
+        ? supabaseBackend({ url, key, dbUrl: env.supabaseDbUrl(), bucket: env.supabaseBucket() })
+        : localBackend(env.dataDir());
+    g.__store = { config, backend };
+  }
+  return g.__store;
+}
+
+function ready(): Promise<Backend> {
+  const s = current();
+  s.ready ??= (async () => {
+    await s.backend.init();
+    await seed(s.backend);
+    s.error = undefined;
+  })().catch((e) => {
+    s.ready = undefined;
+    s.error = e instanceof Error ? e.message : String(e);
+    throw e;
+  });
+  return s.ready.then(() => s.backend);
+}
+
+type LegacyPortal = Portal & { username?: string; password?: string };
+
+/** First start: demo ledger, demo portals and their logins (encrypted). Also moves pre-vault portal passwords into the vault. */
+async function seed(b: Backend) {
+  const stored = await b.getState<Omit<Partial<Settings>, "portals"> & { portals?: LegacyPortal[] }>("settings");
+  if (!(await b.getState<boolean>("seeded"))) {
+    if (!(await b.ledger()).length) await b.replaceLedger(DEMO_LEDGER);
+    if (!(await b.vault()).length) {
+      const portals = stored?.portals ?? DEMO_PORTALS;
+      for (const login of DEMO_LOGINS) {
+        const p = portals.find((x) => x.id === login.portalId);
+        if (p) await b.putVault(newVaultEntry(p.name, p.url, login.username, login.password));
+      }
+    }
+    await b.setState("seeded", true);
+  }
+  const legacy = stored?.portals?.filter((p) => p.password || p.username);
+  if (legacy?.length) {
+    const vault = await b.vault();
+    for (const p of legacy) {
+      if (p.password && !vault.some((v) => v.url === p.url)) await b.putVault(newVaultEntry(p.name, p.url, p.username ?? "", p.password));
+    }
+    await b.setState("settings", { ...stored, portals: stored!.portals!.map(({ username: _u, password: _p, ...rest }) => (void [_u, _p], rest)) });
+  }
+}
+
+export function newVaultEntry(name: string, url: string, username: string, password?: string): VaultEntry {
+  const now = Date.now();
+  const vid = id("vault");
+  return { id: vid, name, url, username, passwordCiphertext: password ? seal(password, vid) : undefined, createdAt: now, updatedAt: now };
+}
+
+export async function storageStatus(): Promise<StorageStatus> {
+  const s = current();
+  try {
+    await ready();
+    return { kind: s.backend.kind, ok: true, target: s.backend.target };
+  } catch (e) {
+    return { kind: s.backend.kind, ok: false, target: s.backend.target, message: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export { StorageSetupError };
+
 export const store = {
-  file: (name: string) => path.join(dir(), name),
-  filesDir: () => {
-    const p = path.join(dir(), "files");
-    ensureDir(p);
-    return p;
+  async settings(): Promise<Settings> {
+    const b = await ready();
+    return { ...defaultSettings(), ...((await b.getState<Partial<Settings>>("settings")) ?? {}) };
+  },
+  async saveSettings(s: Settings) {
+    await (await ready()).setState("settings", s);
   },
 
-  settings(): Settings {
-    return { ...defaultSettings(), ...readJson<Partial<Settings>>(this.file("settings.json"), () => ({})) };
+  async ledger(): Promise<LedgerEntry[]> {
+    return (await ready()).ledger();
   },
-  saveSettings(s: Settings) {
-    writeJson(this.file("settings.json"), s);
-  },
-
-  ledger(): LedgerEntry[] {
-    return readJson(this.file("ledger.json"), () => DEMO_LEDGER);
-  },
-  saveLedger(entries: LedgerEntry[]) {
-    writeJson(this.file("ledger.json"), entries);
+  async saveLedger(entries: LedgerEntry[]) {
+    await (await ready()).replaceLedger(entries);
   },
 
-  documents(): FinancialDocument[] {
-    return readJson(this.file("documents.json"), () => []);
+  async documents(): Promise<FinancialDocument[]> {
+    return (await ready()).documents();
   },
-  saveDocuments(docs: FinancialDocument[]) {
-    writeJson(this.file("documents.json"), docs);
+  async insertDocument(d: FinancialDocument) {
+    await (await ready()).insertDocument(d);
   },
-  updateDocument(docId: string, patch: Partial<FinancialDocument>) {
-    const docs = this.documents();
-    const i = docs.findIndex((d) => d.id === docId);
-    if (i < 0) return undefined;
-    docs[i] = { ...docs[i], ...patch };
-    this.saveDocuments(docs);
-    return docs[i];
+  async updateDocument(docId: string, patch: Partial<FinancialDocument>) {
+    return (await ready()).updateDocument(docId, patch);
+  },
+  async deleteDocument(docId: string) {
+    await (await ready()).deleteDocument(docId);
   },
 
-  issues(): Issue[] {
-    return readJson(this.file("issues.json"), () => []);
+  async issues(): Promise<Issue[]> {
+    return (await ready()).issues();
   },
-  saveIssues(issues: Issue[]) {
-    writeJson(this.file("issues.json"), issues);
+  async insertIssue(i: Issue) {
+    await (await ready()).insertIssue(i);
+  },
+  async updateIssue(issueId: string, patch: Partial<Issue>) {
+    return (await ready()).updateIssue(issueId, patch);
   },
 
-  run(runId: string): Run | undefined {
+  async run(runId: string): Promise<Run | undefined> {
     if (!/^[\w-]+$/.test(runId)) return undefined;
-    return readJson<Run | undefined>(path.join(dir(), "runs", `${runId}.json`), () => undefined);
+    return (await ready()).run(runId);
   },
-  saveRun(run: Run) {
-    writeJson(path.join(dir(), "runs", `${run.id}.json`), run);
+  async runs() {
+    return (await ready()).runs();
   },
-  deleteRun(runId: string) {
-    fs.rmSync(path.join(dir(), "runs", `${runId}.json`), { force: true });
+  async saveRun(run: Run) {
+    await (await ready()).saveRun(run);
   },
-  runs(): Run[] {
-    const d = path.join(dir(), "runs");
-    if (!fs.existsSync(d)) return [];
-    return fs
-      .readdirSync(d)
-      .filter((f) => f.endsWith(".json"))
-      .map((f) => readJson<Run | undefined>(path.join(d, f), () => undefined))
-      .filter((r): r is Run => Boolean(r))
-      .sort((a, b) => b.createdAt - a.createdAt);
+  async deleteRun(runId: string) {
+    await (await ready()).deleteRun(runId);
   },
 
-  readState<T>(name: string, fallback: T): T {
-    return readJson(this.file(name), () => fallback);
+  async vault(): Promise<VaultEntry[]> {
+    return (await ready()).vault();
   },
-  writeState(name: string, value: unknown) {
-    writeJson(this.file(name), value);
+  async putVault(e: VaultEntry) {
+    await (await ready()).putVault(e);
+  },
+  async deleteVault(vid: string) {
+    await (await ready()).deleteVault(vid);
   },
 
-  resetWorkspaceData() {
-    for (const f of ["documents.json", "issues.json"]) fs.rmSync(this.file(f), { force: true });
-    fs.rmSync(path.join(dir(), "runs"), { recursive: true, force: true });
-    fs.rmSync(path.join(dir(), "files"), { recursive: true, force: true });
+  async putFile(name: string, data: Buffer, contentType: string) {
+    await (await ready()).putFile(name, data, contentType);
+  },
+  async getFile(name: string) {
+    return (await ready()).getFile(name);
+  },
+
+  async readState<T>(key: string, fallback: T): Promise<T> {
+    return ((await (await ready()).getState<T>(key)) ?? fallback) as T;
+  },
+  async writeState(key: string, value: unknown) {
+    await (await ready()).setState(key, value);
+  },
+
+  async resetWorkspace() {
+    const b = await ready();
+    await b.clearWorkspace();
+    await b.replaceLedger(DEMO_LEDGER);
   },
 };

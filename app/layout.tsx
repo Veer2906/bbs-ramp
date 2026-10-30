@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Sidebar } from "@/components/sidebar";
+import { StorageBanner } from "@/components/storage-banner";
 import { WorkspaceProvider } from "@/components/workspace-provider";
 import "./globals.css";
 
@@ -19,7 +20,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <WorkspaceProvider>
           <div className="flex h-full">
             <Sidebar />
-            <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+            <main className="flex min-w-0 flex-1 flex-col">
+              <StorageBanner />
+              <div className="min-h-0 flex-1">{children}</div>
+            </main>
           </div>
         </WorkspaceProvider>
       </body>

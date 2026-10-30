@@ -2,14 +2,18 @@ import "server-only";
 import type { NewRunEvent, Run, RunEvent, StreamMessage } from "../types";
 import { store } from "./store";
 
+export type CredentialReply = { vaultId: string } | { skipped: true; note?: string };
+
 interface Live {
   run: Run;
   listeners: Set<(m: StreamMessage) => void>;
   inbox: string[];
   question?: { qid: string; resolve: (answer: string) => void };
+  credential?: { rid: string; resolve: (r: CredentialReply) => void };
   abort: AbortController;
   frame?: { image: string; url: string; title: string };
   saveTimer?: ReturnType<typeof setTimeout>;
+  saving?: Promise<void>;
 }
 
 type G = { __runs?: Map<string, Live>; __dataListeners?: Set<() => void> };
@@ -28,8 +32,8 @@ export const runs = {
     live.set(run.id, l);
     return l;
   },
-  load(id: string): Run | undefined {
-    return live.get(id)?.run ?? store.run(id);
+  async load(id: string): Promise<Run | undefined> {
+    return live.get(id)?.run ?? (await store.run(id));
   },
   subscribe(id: string, fn: (m: StreamMessage) => void) {
     const l = live.get(id);
@@ -53,11 +57,19 @@ function broadcast(l: Live, m: StreamMessage) {
   }
 }
 
+// Saves are serialized per run so a slow write can't land after a newer one.
+function save(l: Live) {
+  l.saving = (l.saving ?? Promise.resolve())
+    .then(() => store.saveRun(l.run))
+    .catch((e) => console.error(`saving run ${l.run.id} failed:`, e instanceof Error ? e.message : e));
+  return l.saving;
+}
+
 export function persist(l: Live, now = false) {
   l.run.updatedAt = Date.now();
   if (l.saveTimer) clearTimeout(l.saveTimer);
-  if (now) store.saveRun(l.run);
-  else l.saveTimer = setTimeout(() => store.saveRun(l.run), 400);
+  if (now) void save(l);
+  else l.saveTimer = setTimeout(() => void save(l), 400);
 }
 
 export function emit(l: Live, e: NewRunEvent): RunEvent {
