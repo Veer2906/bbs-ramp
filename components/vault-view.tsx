@@ -87,7 +87,7 @@ export function VaultView() {
                 </p>
               </div>
               <span className="hidden text-[12px] text-zinc-400 sm:block">{e.lastUsedAt ? `Used ${ago(e.lastUsedAt)}` : "Not used yet"}</span>
-              {e.hasPassword ? <Pill tone="green">Encrypted</Pill> : <Pill tone="amber">No password</Pill>}
+              {!e.hasPassword && <Pill tone="amber">No password</Pill>}
               <Button size="sm" variant="ghost" onClick={() => setEditing(e.id)}>
                 Edit
               </Button>
