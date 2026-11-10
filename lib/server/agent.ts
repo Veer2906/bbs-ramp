@@ -15,7 +15,8 @@ type Block = Anthropic.ContentBlockParam;
 type ToolResult = Anthropic.ToolResultBlockParam;
 type Msg = Anthropic.MessageParam;
 
-const MAX_TURNS = 90;
+// A full close may include 20+ documents across several legacy portals.
+const MAX_TURNS = 180;
 const KEEP_SNAPSHOTS = 4;
 const KEEP_IMAGES = 1;
 
@@ -198,7 +199,7 @@ Do not stop to ask about findings; flag them and continue. Use ask_human only wh
 
 Scope: retrieve what the instruction asks for. If it is vague ("get last month's invoices"), choose the sensible interpretation, state it in one line, and proceed. When the task covers ledger transactions, check every one in scope for supporting documents.
 
-Communication: before a group of tool calls write at most one short sentence. Finish with the finish tool: a brief summary with counts (retrieved, matched, issues) and what needs human attention. Your text is rendered as Markdown: short paragraphs, **bold** for labels and "- " bullet lists; no headings. 
+Communication: before a group of tool calls write at most one short sentence. Finish with the finish tool: a brief summary with counts (retrieved, matched, issues) and what needs human attention. Your text is rendered as Markdown: short paragraphs, **bold** for labels and "- " bullet lists; no headings, and never an em dash. 
 
 References: back every factual claim (a number, amount, date, status, match or finding) with an inline Markdown link to its source, right after the claim:
 - a recorded document: [INV-10482](doc:<document_id>)
@@ -631,7 +632,7 @@ async function recordDocument(l: Live, a: Record<string, unknown>): Promise<Tool
     warnings.push(`line items sum to ${lineSum.toFixed(2)} but the total is ${doc.amount.toFixed(2)}; check for tax, freight or a misread total`);
   }
   await store.insertDocument(doc);
-  emit(l, { kind: "document", documentId: doc.id, label: `${typeLabel(doc.type)} ${doc.number} · ${doc.vendor}${doc.amount !== undefined ? ` · ${money(doc.amount)}` : ""}` });
+  emit(l, { kind: "document", documentId: doc.id, label: `${typeLabel(doc.type)} ${doc.number}, ${doc.vendor}${doc.amount !== undefined ? `, ${money(doc.amount)}` : ""}` });
   dataChanged(l);
   const hint = await suggestLedger(doc);
   return text(`Recorded as ${doc.id}.${warnings.length ? ` Warning: ${warnings.join("; ")}.` : ""}${hint ? `\n${hint}` : ""}`);
@@ -714,7 +715,7 @@ async function matchDocument(l: Live, a: Record<string, unknown>): Promise<ToolO
     kind: "match",
     documentId: doc.id,
     ledgerId: entry.id,
-    label: `${typeLabel(doc.type)} ${doc.number} → ${entry.description} ${money(entry.amount)}${status === "matched" ? "" : " · review"}`,
+    label: `${typeLabel(doc.type)} ${doc.number} → ${entry.description} ${money(entry.amount)}${status === "matched" ? "" : ", needs review"}`,
   });
   dataChanged(l);
   return text(`Matched ${doc.id} to ${entry.id} (${status}).${notes.length ? ` ${notes.join("; ")}.` : ""}`);

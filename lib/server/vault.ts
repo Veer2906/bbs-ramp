@@ -81,16 +81,14 @@ export function matchVault(entries: VaultEntry[], pageUrl: string): VaultEntry |
 }
 
 export async function vaultStatus(): Promise<VaultStatus> {
-  const { source } = vaultKey();
   const entries = await store.vault();
   const sample = entries.find((e) => e.passwordCiphertext);
   let keyOk = true;
-  if (sample) {
-    try {
-      unseal(sample.passwordCiphertext!, sample.id);
-    } catch {
-      keyOk = false;
-    }
+  try {
+    if (sample) unseal(sample.passwordCiphertext!, sample.id);
+    else vaultKey();
+  } catch {
+    keyOk = false;
   }
-  return { cipher: "AES-256-GCM", keySource: source, keyOk, storage: (await storageStatus()).kind };
+  return { cipher: "AES-256-GCM", keyOk, storage: (await storageStatus()).kind };
 }

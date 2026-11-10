@@ -89,12 +89,11 @@ export type PublicVaultEntry = Omit<VaultEntry, "passwordCiphertext"> & { hasPas
 
 export interface VaultStatus {
   cipher: "AES-256-GCM";
-  keySource: "env" | "file";
   keyOk: boolean;
   storage: StorageKind;
 }
 
-export type StorageKind = "supabase" | "local";
+export type StorageKind = "supabase";
 
 export interface StorageStatus {
   kind: StorageKind;

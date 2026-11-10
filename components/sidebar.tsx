@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ago } from "@/lib/client/api";
-import { Px } from "./pixel-icon";
+import { Icon, type IconName } from "./icon";
 import { Spinner, cx } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
 export function Sidebar() {
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col bg-moss px-3 pt-4 pb-3 text-moss-ink">
+    <aside className="flex w-[252px] shrink-0 flex-col px-3 pt-4 pb-3 text-zinc-600" style={{ viewTransitionName: "app-sidebar" }}>
       <Suspense fallback={<div className="flex-1" />}>
         <SidebarInner />
       </Suspense>
@@ -18,20 +18,21 @@ export function Sidebar() {
   );
 }
 
-function NavLink({ href, active, label, count }: { href: string; active: boolean; label: string; count?: number }) {
+function NavLink({ href, active, label, icon, count }: { href: string; active: boolean; label: string; icon: IconName; count?: number }) {
   return (
     <Link
       href={href}
-      className={cx(
-        "press group relative flex h-9 items-center gap-3 rounded-lg px-3 text-[13.5px]",
-        active ? "bg-white/[0.07] font-medium text-white" : "text-moss-ink hover:bg-white/[0.045] hover:text-white"
-      )}
+      className={cx("press flex h-9 items-center gap-3 rounded-[10px] px-3 text-[13.5px]", active ? "bg-zinc-900/[0.09] text-zinc-900" : "hover:bg-zinc-900/[0.05] hover:text-zinc-900")}
     >
-      <span className={cx("absolute top-2 bottom-2 left-0 w-[3px]  bg-lime transition-transform duration-200", active ? "scale-y-100" : "scale-y-0")} />
+      <Icon name={icon} className={active ? "text-zinc-900" : "text-zinc-500"} />
       <span className="flex-1">{label}</span>
-      {count ? <span className="rounded-[4px] bg-lime px-1.5 py-px font-mono text-[10.5px] text-moss">{count}</span> : null}
+      {count ? <span className="tabular rounded-full bg-zinc-900/[0.09] px-2 py-px text-[11.5px] text-zinc-700">{count}</span> : null}
     </Link>
   );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <p className="mt-6 mb-1.5 px-3 text-[12px] text-zinc-400">{children}</p>;
 }
 
 function SidebarInner() {
@@ -41,63 +42,54 @@ function SidebarInner() {
   const currentRun = path === "/" ? params.get("run") : null;
   const openIssues = data.issues.filter((i) => i.status === "open").length;
   const review = data.documents.filter((d) => d.status === "needs_review").length;
-
-  const nav = [
-    { href: "/documents", label: "Documents", count: review || undefined },
-    { href: "/ledger", label: "Reconciliation" },
-    { href: "/issues", label: "Issues", count: openIssues || undefined },
-    { href: "/vault", label: "Vault" },
-    { href: "/memory", label: "Memory" },
-  ];
+  const home = path === "/" && !currentRun;
 
   return (
     <>
-      <Link
-        href="/"
-        className={cx(
-          "press group flex h-10 items-center gap-2.5 rounded-lg px-3 text-[13.5px] font-medium",
-          path === "/" && !currentRun ? "bg-lime text-moss" : "bg-white/[0.07] text-[#eef2ea] hover:bg-lime hover:text-moss"
-        )}
-      >
-        <Px name="plus" scale={1} />
-        <span className="flex-1">New chat</span>
-        <Px name="next" scale={1} className="opacity-60 transition-transform group-hover:translate-x-0.5" />
+      <Link href="/" className="mb-4 flex h-8 items-center px-3 text-zinc-900" aria-label="Team Rampresso, home">
+        <span className="display text-[23px]">Team Rampresso</span>
       </Link>
 
-      <nav className="mt-4 flex flex-col gap-0.5">
-        {nav.map((n) => (
-          <NavLink key={n.href} href={n.href} active={path === n.href} label={n.label} count={n.count} />
-        ))}
+      <Link
+        href="/"
+        className={cx("press flex h-10 items-center gap-3 rounded-[10px] px-3 text-[13.5px] font-medium text-zinc-900", home ? "bg-zinc-900/[0.11]" : "bg-zinc-900/[0.05] hover:bg-zinc-900/[0.09]")}
+      >
+        <Icon name="compose" />
+        New chat
+      </Link>
+
+      <Label>Close</Label>
+      <nav className="flex flex-col gap-0.5">
+        <NavLink href="/documents" active={path === "/documents"} label="Documents" icon="doc" count={review || undefined} />
+        <NavLink href="/ledger" active={path === "/ledger"} label="Reconciliation" icon="ledger" />
+        <NavLink href="/issues" active={path === "/issues"} label="Issues" icon="flag" count={openIssues || undefined} />
       </nav>
 
-      <p className="eyebrow mt-8 mb-2 flex items-center px-3 !text-moss-dim">
-        <span className="flex-1">Chats</span>
-        <span className="text-[#4a5c50]">{runs.length}</span>
-      </p>
+      <Label>Agent</Label>
+      <nav className="flex flex-col gap-0.5">
+        <NavLink href="/vault" active={path === "/vault"} label="Vault" icon="lock" />
+        <NavLink href="/memory" active={path === "/memory"} label="Memory" icon="memory" />
+      </nav>
+
+      <Label>Recent</Label>
       <div className="scroll-thin -mx-1 flex-1 overflow-y-auto px-1">
-        {runs.length === 0 ? <p className="px-3 py-2 font-mono text-[11.5px] text-moss-dim">no chats yet</p> : null}
+        {runs.length === 0 ? <p className="px-3 py-1 text-[12.5px] text-zinc-400">No chats yet</p> : null}
         {runs.map((r) => {
           const live = ["starting", "running", "waiting"].includes(r.status);
+          const on = currentRun === r.id;
           return (
-            <Link
-              key={r.id}
-              href={`/?run=${r.id}`}
-              className={cx(
-                "press group flex flex-col rounded-lg px-3 py-2",
-                currentRun === r.id ? "bg-white/[0.07]" : "hover:bg-white/[0.045]"
-              )}
-            >
-              <span className={cx("line-clamp-2 text-[13px] leading-snug", currentRun === r.id ? "text-white" : "text-moss-ink")}>{r.title}</span>
-              <span className="mt-1 flex items-center gap-1.5 font-mono text-[10.5px] tracking-wide text-moss-dim uppercase">
-                {live ? <Spinner className={r.status === "waiting" ? "text-[#e8b24a]" : "text-lime"} /> : null}
+            <Link key={r.id} href={`/?run=${r.id}`} className={cx("press flex flex-col rounded-[10px] px-3 py-2", on ? "bg-zinc-900/[0.09]" : "hover:bg-zinc-900/[0.05]")}>
+              <span className={cx("truncate text-[13.5px]", on ? "text-zinc-900" : "text-zinc-700")}>{r.title}</span>
+              <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-zinc-400">
+                {live ? <Spinner className={cx("text-[10px]", r.status === "waiting" ? "text-amber-500" : "text-emerald-500")} /> : null}
                 {r.status === "waiting" ? (
-                  <span className="text-[#e8b24a]">Needs input</span>
+                  <span className="text-amber-600">Needs your input</span>
                 ) : r.status === "failed" ? (
-                  <span className="text-[#e58a74]">Failed</span>
+                  <span className="text-rose-600">Failed</span>
                 ) : r.status === "stopped" ? (
                   <span>Stopped</span>
                 ) : live ? (
-                  <span className="text-lime">Working</span>
+                  <span className="text-emerald-600">Working</span>
                 ) : (
                   <span>{ago(r.updatedAt)}</span>
                 )}
@@ -108,7 +100,7 @@ function SidebarInner() {
       </div>
 
       <div className="mt-2">
-        <NavLink href="/settings" active={path === "/settings"} label="Settings" />
+        <NavLink href="/settings" active={path === "/settings"} label="Settings" icon="sliders" />
       </div>
     </>
   );

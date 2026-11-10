@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, ago } from "@/lib/client/api";
 import type { Issue } from "@/lib/types";
+import { Markdown } from "./markdown";
 import { Button, Empty, PageHeader, Panel, Pill, Segmented, type Tone } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
@@ -64,7 +65,7 @@ export function IssuesView() {
             value={filter}
             onChange={setFilter}
             options={[
-              { value: "open", label: `Open ${data.issues.filter((i) => i.status === "open").length}` },
+              { value: "open", label: `${data.issues.filter((i) => i.status === "open").length} open` },
               { value: "resolved", label: "Resolved" },
             ]}
           />
@@ -87,21 +88,21 @@ export function IssuesView() {
                     <Pill tone={SEVERITY[i.severity]}>{KIND[i.kind]}</Pill>
                     <span className="text-[12px] text-zinc-400">{ago(i.createdAt)}</span>
                   </div>
-                  <p className="mt-2 text-[14.5px] font-medium text-zinc-900">{i.title}</p>
-                  <p className="mt-1 text-[13.5px] leading-relaxed text-zinc-600">{i.detail}</p>
+                  <p className="mt-2.5 text-[15px] font-medium text-zinc-900">{i.title}</p>
+                  <Markdown text={i.detail} className="mt-1 text-[13.5px] leading-relaxed text-zinc-600" />
                   {docs.length || entry ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {entry ? (
-                        <Link href="/ledger" className="rounded-lg bg-zinc-900/[0.04] px-2.5 py-1 text-[12.5px] text-zinc-700 hover:bg-zinc-900/[0.07]">
-                          {entry.id} · {entry.description}
+                        <Link href="/ledger" className="rounded-lg bg-zinc-900/[0.07] px-2.5 py-1 text-[12.5px] text-zinc-800 transition-colors hover:bg-zinc-900/[0.12]">
+                          {entry.id} {entry.description}
                         </Link>
                       ) : null}
                       {docs.map((d) => (
-                        <Link key={d.id} href={`/documents?doc=${d.id}`} className="rounded-lg bg-zinc-900/[0.04] px-2.5 py-1 text-[12.5px] text-zinc-700 hover:bg-zinc-900/[0.07]">
+                        <Link key={d.id} href={`/documents?doc=${d.id}`} className="rounded-lg bg-zinc-900/[0.07] px-2.5 py-1 text-[12.5px] text-zinc-800 transition-colors hover:bg-zinc-900/[0.12]">
                           {d.number}
                         </Link>
                       ))}
-                      <Link href={`/?run=${i.runId}`} className="rounded-lg px-2.5 py-1 text-[12.5px] text-zinc-400 hover:text-zinc-700">
+                      <Link href={`/?run=${i.runId}`} className="rounded-lg px-2.5 py-1 text-[12.5px] text-zinc-500 transition-colors hover:text-zinc-900">
                         View task
                       </Link>
                     </div>

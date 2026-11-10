@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { Px } from "./pixel-icon";
+import { Icon } from "./icon";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
 }
 
-/** Braille spinner drawn in the mono font; frames are discrete like a stepper motor. */
+/** Ring spinner sized by the surrounding font size. */
 export function Spinner({ className }: { className?: string }) {
-  return <span aria-hidden className={cx("spin-ascii inline-block w-[1ch] shrink-0 text-center font-mono leading-none", className)} />;
+  return <span aria-hidden className={cx("spinner", className)} />;
 }
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -27,43 +27,34 @@ export function Button({
       {...rest}
       disabled={rest.disabled || loading}
       className={cx(
-        "press inline-flex items-center justify-center gap-1.5 rounded-lg font-medium disabled:cursor-not-allowed disabled:opacity-45",
+        "press inline-flex items-center justify-center gap-1.5 rounded-[10px] font-medium whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40",
         size === "sm" ? "h-8 px-3 text-[13px]" : "h-9 px-3.5 text-[13.5px]",
-        variant === "primary" && "bg-moss text-[#f1f4ec] hover:bg-moss-2 [&:hover_.btn-arrow]:translate-x-0.5",
-        variant === "secondary" && "bg-zinc-900/[0.055] text-zinc-800 hover:bg-zinc-900/[0.09]",
-        variant === "ghost" && "text-zinc-600 hover:bg-zinc-900/[0.05] hover:text-zinc-900",
-        variant === "danger" && "text-rose-700 hover:bg-rose-500/10",
+        variant === "primary" && "bg-plaster text-ink hover:bg-white",
+        variant === "secondary" && "bg-zinc-900/[0.08] text-zinc-900 hover:bg-zinc-900/[0.13]",
+        variant === "ghost" && "text-zinc-600 hover:bg-zinc-900/[0.07] hover:text-zinc-900",
+        variant === "danger" && "text-rose-600 hover:bg-rose-500/[0.12]",
         className
       )}
     >
-      {loading ? <Spinner className="text-[13px]" /> : null}
+      {loading ? <Spinner className="text-[12px]" /> : null}
       {children}
     </button>
   );
 }
 
 const TONES = {
-  neutral: "bg-zinc-900/[0.055] text-zinc-600",
-  green: "bg-emerald-500/[0.12] text-emerald-800",
+  neutral: "bg-zinc-900/[0.08] text-zinc-700",
+  green: "bg-emerald-500/[0.13] text-emerald-800",
   amber: "bg-amber-500/[0.14] text-amber-800",
-  red: "bg-rose-500/[0.11] text-rose-700",
-  blue: "bg-sky-500/[0.12] text-sky-700",
-  lime: "bg-lime text-zinc-900",
+  red: "bg-rose-500/[0.14] text-rose-800",
+  blue: "bg-sky-500/[0.16] text-sky-700",
 } as const;
 
 export type Tone = keyof typeof TONES;
 
 export function Pill({ tone = "neutral", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span
-      className={cx(
-        "inline-flex h-[22px] shrink-0 items-center rounded-[4px] px-1.5 font-mono text-[10.5px] font-medium tracking-[0.06em] whitespace-nowrap uppercase",
-        TONES[tone],
-        className
-      )}
-    >
-      {children}
-    </span>
+    <span className={cx("inline-flex h-[22px] shrink-0 items-center rounded-full px-2.5 text-[11.5px] font-medium whitespace-nowrap", TONES[tone], className)}>{children}</span>
   );
 }
 
@@ -71,41 +62,12 @@ export function Panel({ className, children }: { className?: string; children: R
   return <div className={cx("card", className)}>{children}</div>;
 }
 
-const GLYPHS = "▚▞▙▟▛▜░▒#/\\<>";
-
-/** Text that decodes from block glyphs into place, left to right, once on mount. */
-export function Scramble({ text, className }: { text: string; className?: string }) {
-  const [shown, setShown] = useState(text);
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let frame = 0;
-    const total = 14;
-    const t = setInterval(() => {
-      frame++;
-      const settled = Math.floor((frame / total) * text.length);
-      setShown(
-        text
-          .split("")
-          .map((c, i) => (i < settled || c === " " ? c : GLYPHS[(i * 7 + frame * 3) % GLYPHS.length]))
-          .join("")
-      );
-      if (frame >= total) clearInterval(t);
-    }, 32);
-    return () => clearInterval(t);
-  }, [text]);
-  return <span className={className}>{shown}</span>;
-}
-
-export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cx("eyebrow", className)}>{children}</p>;
-}
-
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="flex items-end justify-between gap-4 px-8 pt-9 pb-6">
+    <div className="flex items-end justify-between gap-4 px-8 pt-10 pb-7">
       <div className="min-w-0">
-        <h1 className="text-[28px] leading-none font-semibold tracking-[-0.04em] text-zinc-900">{title}</h1>
-        {subtitle ? <p className="mt-2.5 max-w-[640px] text-[13.5px] leading-relaxed text-zinc-500">{subtitle}</p> : null}
+        <h1 className="display text-[40px] text-zinc-900">{title}</h1>
+        {subtitle ? <p className="mt-3 max-w-[620px] text-[13.5px] leading-relaxed text-zinc-600">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </div>
@@ -115,9 +77,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-      <Px name="doc" scale={3} className="mb-5 text-zinc-300" />
-      <p className="text-[15px] font-medium text-zinc-800">{title}</p>
-      {hint ? <p className="mt-1 max-w-sm text-[13.5px] text-zinc-500">{hint}</p> : null}
+      <p className="display text-[24px] text-zinc-900">{title}</p>
+      {hint ? <p className="mt-2 max-w-sm text-[13.5px] leading-relaxed text-zinc-500">{hint}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
@@ -133,14 +94,14 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg bg-zinc-900/[0.055] p-0.5">
+    <div className="inline-flex rounded-[10px] bg-zinc-900/[0.07] p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "press h-7 rounded-md px-3 text-[12.5px] font-medium",
-            o.value === value ? "bg-[#fffefb] text-zinc-900 shadow-[0_1px_2px_rgb(28_27_24/0.1),0_0_0_1px_rgb(28_27_24/0.06)]" : "text-zinc-500 hover:text-zinc-800"
+            "press h-7 rounded-lg px-3 text-[12.5px] font-medium whitespace-nowrap",
+            o.value === value ? "bg-zinc-900/[0.14] text-zinc-900 shadow-[inset_0_1px_0_rgb(244_241_234/0.08)]" : "text-zinc-500 hover:text-zinc-800"
           )}
         >
           {o.label}
@@ -164,8 +125,8 @@ export function Odometer({ value, className }: { value: string | number; classNa
         const d = c.charCodeAt(0) - 48;
         if (d < 0 || d > 9) return <span key={i} aria-hidden className="whitespace-pre">{c}</span>;
         return (
-          <span key={i} aria-hidden className="relative inline-block h-[1em] w-[1ch] overflow-hidden">
-            <span className="odo-digit absolute inset-x-0 top-0 flex flex-col" style={{ transform: `translateY(-${(ready ? d : 0) * 10}%)`, transitionDelay: `${i * 40}ms` }}>
+          <span key={i} aria-hidden className="relative inline-block h-[1em] w-[0.5em] overflow-hidden">
+            <span className="odo-digit absolute inset-x-0 top-0 flex flex-col items-center" style={{ transform: `translateY(-${(ready ? d : 0) * 10}%)`, transitionDelay: `${i * 60}ms` }}>
               {"0123456789".split("").map((n) => (
                 <span key={n} className="h-[1em] leading-none">
                   {n}
@@ -179,17 +140,29 @@ export function Odometer({ value, className }: { value: string | number; classNa
   );
 }
 
-/** Fixed-width text progress bar, e.g. ███████░░░░░ */
-export function AsciiBar({ value, width = 20, className }: { value: number; width?: number; className?: string }) {
-  const filled = Math.round(Math.max(0, Math.min(1, value)) * width);
+/** Thin progress line that fills from the left. */
+export function Meter({ value, className }: { value: number; className?: string }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
+  const pct = Math.max(0, Math.min(1, value)) * 100;
   return (
-    <span className={cx("inline-flex items-center gap-[2px]", className)} aria-hidden>
-      {Array.from({ length: width }, (_, i) => (
-        <span key={i} className={cx("block size-[6px] transition-colors duration-300", i < filled ? (i >= width - 2 ? "bg-lime" : "bg-leaf-deep") : "bg-zinc-200")} style={{ transitionDelay: `${i * 30}ms` }} />
-      ))}
+    <span className={cx("block h-[3px] overflow-hidden rounded-full bg-zinc-900/[0.1]", className)} aria-hidden>
+      <span className="block h-full rounded-full bg-plaster transition-[width] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ width: `${ready ? pct : 0}%` }} />
     </span>
   );
 }
 
+/** Small close button used by drawers and panels. */
+export function CloseButton({ onClick, title = "Close" }: { onClick: () => void; title?: string }) {
+  return (
+    <button onClick={onClick} title={title} className="press flex size-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-900/[0.08] hover:text-zinc-900">
+      <Icon name="x" size={14} />
+    </button>
+  );
+}
+
 export const inputClass =
-  "h-9 w-full rounded-lg bg-[#fffefb] px-3 text-[13.5px] text-zinc-900 shadow-[0_0_0_1px_rgb(28_27_24/0.11)] outline-none transition-shadow placeholder:text-zinc-400 focus:shadow-[0_0_0_1px_rgb(28_27_24/0.5),0_0_0_4px_rgb(228_242_34/0.45)]";
+  "h-9 w-full rounded-[10px] bg-zinc-900/[0.06] px-3 text-[13.5px] text-zinc-900 shadow-[inset_0_0_0_1px_rgb(244_241_234/0.08)] outline-none transition-shadow placeholder:text-zinc-400 focus:shadow-[inset_0_0_0_1px_rgb(244_241_234/0.45),0_0_0_4px_rgb(244_241_234/0.08)]";

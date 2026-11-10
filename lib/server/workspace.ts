@@ -6,7 +6,7 @@ import { env } from "./env";
 import { sail, SailError } from "./sail";
 import { store } from "./store";
 
-const RUNTIME_FILES = ["browserd.py", "ctl.py", "portals.py", "bootstrap.sh"];
+const RUNTIME_FILES = ["browserd.py", "ctl.py", "portals.py", "demo.json", "bootstrap.sh"];
 const STATE = "sailbox.json";
 
 interface BoxState {

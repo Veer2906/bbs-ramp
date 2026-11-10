@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ago, type MemoryDraft } from "@/lib/client/api";
 import type { MemoryKind, MemoryNode } from "@/lib/types";
 import { KINDS, MemoryGraph } from "./memory-graph";
-import { Px } from "./pixel-icon";
+import { Icon } from "./icon";
 import { Button, Empty, PageHeader, Panel, Segmented, cx, inputClass } from "./ui";
 
 export function MemoryView() {
@@ -30,18 +30,18 @@ export function MemoryView() {
   const shown = (nodes ?? []).filter((n) => filter === "all" || n.kind === filter);
 
   return (
-    <div className="scroll-thin h-full overflow-y-auto pb-16">
+    <div className="scroll-thin flex h-full flex-col overflow-y-auto pb-8">
       <PageHeader
         title="Memory"
         subtitle="Facts the agent reads before every task: key dates, important invoices, vendor quirks and your rules. Edit anything here and the next task uses it. The agent also keeps it up to date in the background."
         actions={
           <Button variant="primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
-            <Px name="plus" scale={1} />
+            <Icon name="plus" size={15} />
             Add fact
           </Button>
         }
       />
-      <div className="flex max-w-[860px] flex-col gap-4 px-8">
+      <div className="mx-auto flex w-full max-w-[860px] flex-1 flex-col gap-4 px-5 sm:px-8">
         {error ? <p className="text-[13px] text-rose-600">{error}</p> : null}
         {nodes?.length ? <MemoryGraph nodes={nodes} selected={editing} onSelect={setEditing} /> : null}
         {editing === "new" ? (
@@ -57,11 +57,17 @@ export function MemoryView() {
           />
         ) : null}
         {nodes?.length ? (
-          <div className="mt-2">
-            <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, ...KINDS]} />
+          <div className="mt-2 flex justify-center">
+            <div className="max-w-full overflow-x-auto py-1">
+              <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, ...KINDS]} />
+            </div>
           </div>
         ) : null}
-        {nodes?.length === 0 && editing !== "new" ? <Empty title="Nothing remembered yet" hint="Add key dates, invoices or vendor notes, or let the agent save what it learns." /> : null}
+        {nodes?.length === 0 && editing !== "new" ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Empty title="Nothing remembered yet" hint="Add key dates, invoices or vendor notes, or let the agent save what it learns." />
+          </div>
+        ) : null}
         <div className="flex flex-col gap-2">
           {shown.map((n) =>
             editing === n.id ? (
@@ -82,13 +88,13 @@ export function MemoryView() {
                 }}
               />
             ) : (
-              <button key={n.id} onClick={() => setEditing(n.id)} className="card group flex items-start gap-4 px-4 py-3 text-left transition-colors hover:bg-white">
-                <span className="mt-0.5 w-[72px] shrink-0 font-mono text-[10.5px] tracking-wide text-zinc-400 uppercase">{n.kind}</span>
+              <button key={n.id} onClick={() => setEditing(n.id)} className="card press flex items-start gap-4 px-4 py-3.5 text-left">
+                <span className="mt-px w-[64px] shrink-0 text-[12.5px] text-zinc-500 capitalize">{n.kind}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13.5px] font-medium text-zinc-900">{n.title}</span>
                   {n.detail ? <span className="mt-0.5 block text-[13px] leading-relaxed text-zinc-500">{n.detail}</span> : null}
                 </span>
-                <span className="shrink-0 font-mono text-[10.5px] text-zinc-400">{ago(n.updatedAt)}</span>
+                <span className="shrink-0 text-[12px] text-zinc-400">{ago(n.updatedAt)}</span>
               </button>
             )
           )}
@@ -167,7 +173,7 @@ function MemoryForm({
                     type="button"
                     key={o.id}
                     onClick={() => setD((x) => ({ ...x, links: on ? x.links?.filter((l) => l !== o.id) : [...(x.links ?? []), o.id] }))}
-                    className={cx("h-7 px-2.5 text-[12.5px] transition-colors", on ? "bg-zinc-900 text-zinc-50" : "bg-zinc-900/[0.05] text-zinc-600 hover:bg-zinc-900/[0.09]")}
+                    className={cx("press h-7 rounded-full px-3 text-[12.5px]", on ? "bg-plaster text-ink" : "bg-zinc-900/[0.07] text-zinc-600 hover:bg-zinc-900/[0.12]")}
                   >
                     {o.title}
                   </button>
@@ -199,7 +205,7 @@ function MemoryForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10.5px] tracking-wide text-zinc-500 uppercase">{label}</span>
+      <span className="eyebrow">{label}</span>
       {children}
     </label>
   );

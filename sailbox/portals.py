@@ -6,20 +6,25 @@ interstitials, PDFs served as attachments) without touching a real vendor.
 """
 
 import html
+import json
 import secrets
 import urllib.parse
 from datetime import date, timedelta
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 PORT = 8080
 SESSIONS = {}
+DEMO = json.loads(Path(__file__).with_name("demo.json").read_text())
+LOGINS = {p["id"]: p for p in DEMO["portals"]}
+AS_OF = date.fromisoformat(DEMO["asOf"])
 
 # ---------------------------------------------------------------- data
 
 NORTHWIND = [
     # number, date, po, amount, status, lines
-    ("INV-10431", "2026-08-04", "PO-5470", 318.40, "Paid", [("Copy paper, 10 ream case", 4, 52.10), ("Toner HP 58A", 1, 109.99)]),
+    ("INV-10431", "2026-08-04", "PO-5470", 318.39, "Paid", [("Copy paper, 10 ream case", 4, 52.10), ("Toner HP 58A", 1, 109.99)]),
     ("INV-10438", "2026-08-12", "PO-5479", 1120.00, "Paid", [("Ergonomic chair, mesh", 4, 280.00)]),
     ("INV-10446", "2026-08-21", "PO-5486", 87.35, "Paid", [("Sticky notes, 24pk", 3, 18.45), ("Ballpoint pens, 60ct", 1, 32.00)]),
     ("INV-10452", "2026-08-29", "PO-5491", 455.90, "Paid", [("Label printer DYMO 450", 2, 179.95), ("Label rolls", 4, 24.00)]),
@@ -27,18 +32,20 @@ NORTHWIND = [
     ("INV-10463", "2026-09-11", "PO-5503", 1689.00, "Paid", [("Standing desk frame", 3, 563.00)]),
     ("INV-10466", "2026-09-18", "PO-5510", 129.80, "Paid", [("Whiteboard markers", 10, 12.98)]),
     ("INV-10469", "2026-09-26", "PO-5516", 774.25, "Paid", [("Monitor arm, dual", 5, 154.85)]),
-    ("INV-10471", "2026-10-03", "PO-5521", 642.18, "Paid", [("Copy paper, 10 ream case", 6, 52.10), ("Toner HP 58A", 3, 109.99), ("Shipping", 1, 0.61)]),
+    ("INV-10471", "2026-10-03", "PO-5521", 643.18, "Paid", [("Copy paper, 10 ream case", 6, 52.10), ("Toner HP 58A", 3, 109.99), ("Shipping", 1, 0.61)]),
     ("INV-10482", "2026-10-09", "PO-5534", 1248.50, "Paid", [("Office chair, task", 5, 229.70), ("Chair mats", 1, 100.00)]),
     ("INV-10490", "2026-10-17", "PO-5540", 389.00, "Paid", [("Shredder, cross-cut", 1, 389.00)]),
     ("INV-10493", "2026-10-20", "PO-5544", 512.60, "Open", [("Break room supplies", 1, 512.60)]),
     ("INV-10497", "2026-10-24", "PO-5549", 2115.75, "Open", [("Laptop docking station", 9, 235.08), ("Shipping", 1, 0.03)]),
+    # Deliberate arithmetic exception: no tax/freight line explains the extra $10.
+    ("INV-10501", "2026-10-28", "PO-5558", 190.00, "Open", [("Desk organizer", 6, 30.00)]),
 ]
 
 CONTOSO_BILLS = [
     ("FB-77088", "2026-09-08", "PO-5497", 1420.00, "Chicago, IL -> Columbus, OH", "BOL 4418820"),
     ("FB-77102", "2026-09-22", "PO-5512", 610.75, "Chicago, IL -> Detroit, MI", "BOL 4418874"),
     ("FB-77120", "2026-10-06", "PO-5528", 1870.00, "Chicago, IL -> Atlanta, GA", "BOL 4419003"),
-    ("FB-77141", "2026-10-14", "PO-5537", 945.30, "Chicago, IL -> St. Louis, MO", "BOL 4419051"),
+    ("FB-77141", "2026-10-14", "PO-5536", 945.30, "Chicago, IL -> St. Louis, MO", "BOL 4419051"),
 ]
 
 CONTOSO_POS = [
@@ -51,19 +58,22 @@ CONTOSO_POS = [
 
 ACME_DOCS = {
     "Invoices": [
-        ("AC-INV-2274", "2026-09-12", "PO-5505", 2210.00, "Paid"),
+        ("AC-INV-2274", "2026-09-12", "PO-5505", 2210.60, "Paid"),
         ("AC-INV-2291", "2026-10-02", "PO-5519", 3480.00, "Paid"),
         ("AC-INV-2307", "2026-10-15", "PO-5538", 760.40, "Paid"),
         ("AC-INV-2315", "2026-10-21", "PO-5546", 1125.00, "Payment pending"),
+        ("AC-INV-2320", "2026-10-28", "", 420.00, "Open"),
     ],
     "Payment Receipts": [
         ("RC-8790", "2026-09-19", "AC-INV-2274", 2210.60, "Posted"),
         ("RC-8812", "2026-10-04", "AC-INV-2291", 3480.00, "Posted"),
         ("RC-8840", "2026-10-16", "AC-INV-2307", 760.40, "Posted"),
         ("RC-8841", "2026-10-16", "AC-INV-2307", 760.40, "Posted"),
+        ("RC-8850", "2026-10-25", "AC-INV-2315", 600.00, "Partial payment"),
     ],
     "Credit Memos": [
         ("CM-0119", "2026-09-30", "AC-INV-2274", -145.00, "Applied"),
+        ("CM-0124", "2026-10-26", "AC-INV-2315", -125.00, "Applied"),
     ],
 }
 
@@ -72,10 +82,22 @@ ACME_LINES = {
     "AC-INV-2291": [("Hydraulic fitting kit", 12, 165.00), ("Hose assembly 3/8in", 30, 50.00)],
     "AC-INV-2307": [("Bearing 6204-2RS", 80, 6.38), ("Shaft collar 1in", 40, 6.25)],
     "AC-INV-2315": [("Pneumatic cylinder 2in bore", 5, 225.00)],
+    "AC-INV-2320": [("Maintenance kit", 1, 420.00)],
 }
 
-NORTHWIND = [(n, d, po, round(sum(q * u for _, q, u in lines), 2), st, lines) for n, d, po, _, st, lines in NORTHWIND]
-ACME_DOCS["Invoices"] = [(n, d, po, round(sum(q * u for _, q, u in ACME_LINES[n]), 2), st) for n, d, po, _, st in ACME_DOCS["Invoices"]]
+ACME_NOTES = {
+    "AC-INV-2320": "PO and receiving warehouse were not supplied. Bill to head office; confirm whether Chicago or Joliet received this maintenance kit.",
+    "RC-8812": "Bank payment reference ACH-760110.",
+    "RC-8840": "Bank payment reference ACH-761204.",
+    "RC-8841": "Bank payment reference ACH-761204. Reissued copy of receipt RC-8840; no additional funds received.",
+    "RC-8850": "Bank payment reference ACH-762508. Partial remittance against AC-INV-2315.",
+    "CM-0124": "Return allowance for damaged cylinder on AC-INV-2315. Reduces the invoice balance by $125.00.",
+}
+
+DELIVERIES = [
+    ("POD-4419003", "2026-10-07", "FB-77120", "PO-5528", "Atlanta, GA", "M. Lewis"),
+    ("POD-4419051", "2026-10-15", "FB-77141", "PO-5537", "St. Louis, MO", "R. Chen"),
+]
 
 BILL_TO = ["Accounts Payable", "Brightline Building Supply Co.", "1200 W Lake St, Suite 400", "Chicago, IL 60607"]
 
@@ -208,7 +230,7 @@ class H(BaseHTTPRequestHandler):
     # ---- helpers
     def sess(self):
         c = SimpleCookie(self.headers.get("Cookie", ""))
-        sid = c.get("LEGACYSESSID")
+        sid = c.get(f"LEGACYSESSID_{self.portal}")
         return SESSIONS.get(sid.value) if sid else None
 
     def new_sess(self, data):
@@ -230,7 +252,7 @@ class H(BaseHTTPRequestHandler):
         self.send_response(302)
         self.send_header("Location", to)
         if cookie:
-            self.send_header("Set-Cookie", f"LEGACYSESSID={cookie}; Path=/")
+            self.send_header("Set-Cookie", f"LEGACYSESSID_{self.portal}={cookie}; Path=/{self.portal}/; HttpOnly; SameSite=Lax")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -248,6 +270,7 @@ class H(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         p = u.path.rstrip("/") or "/"
+        self.portal = p.split("/")[1]
         if p == "/":
             return self.send("<html><body><h3>Vendor sandbox</h3><a href='/northwind/'>Northwind</a> <a href='/contoso/'>Contoso</a> <a href='/acme/'>Acme</a></body></html>")
         if p.startswith("/northwind"):
@@ -265,7 +288,7 @@ class H(BaseHTTPRequestHandler):
         if p in ("/", "/default.asp", "/login.asp"):
             err = ""
             if method == "POST":
-                if form.get("txtUser", "").strip().lower() == "apclerk" and form.get("txtPass") == "Northwind#2004":
+                if form.get("txtUser", "").strip().lower() == LOGINS["northwind"]["username"] and form.get("txtPass") == LOGINS["northwind"]["password"]:
                     sid = self.new_sess({"nw": True})
                     return self.redirect("/northwind/home.asp", sid)
                 err = "<font color=red><b>Invalid User ID or Password. Please try again.</b></font><br><br>"
@@ -322,8 +345,21 @@ class H(BaseHTTPRequestHandler):
                           "INVOICE", [("Invoice #", r[0]), ("Date", us(r[1])), ("Customer PO", r[2]), ("Account", "NW-30417"), ("Terms", "Net 30"), ("Due", us(due))],
                           r[5], r[3], ["Thank you for your business. Past due balances subject to 1.5% monthly finance charge."])
             return self.send(pdf, "application/pdf", headers={"Content-Disposition": f'attachment; filename="{r[0]}.pdf"'})
-        if p in ("/orders.asp", "/statements.asp"):
-            return self.send(nw_page("<i>This module is temporarily unavailable. Please contact your account representative.</i>"))
+        if p == "/orders.asp":
+            trs = "".join(f"<tr><td>{r[2]}</td><td>{us(r[1])}</td><td>{r[0]}</td><td>{r[4]}</td></tr>" for r in reversed(NORTHWIND))
+            return self.send(nw_page(f"<h3>Order History</h3><table class='grid'><tr><th>PO</th><th>Date</th><th>Invoice</th><th>Status</th></tr>{trs}</table>"))
+        if p == "/statements.asp":
+            return self.send(nw_page(f"<h3>Account Statements</h3><p>As of {us(DEMO['asOf'])}</p><a href='/northwind/statement.asp?month=2026-10'>October 2026 statement (PDF)</a>"))
+        if p == "/statement.asp":
+            if q.get("month") != "2026-10":
+                return self.send("statement not found", status=404)
+            open_rows = [r for r in NORTHWIND if r[4] == "Open" and r[1].startswith("2026-10")]
+            lines = [(f"{r[0]} dated {us(r[1])} - {r[2]}", 1, r[3]) for r in open_rows]
+            pdf = doc_pdf(["Northwind Office Supply", "Customer account NW-30417"], "STATEMENT",
+                          [("Statement #", "ST-NW-202610"), ("As of", us(DEMO["asOf"])), ("Period", "October 2026")],
+                          lines, round(sum(r[3] for r in open_rows), 2),
+                          ["Open invoices only. This statement is a summary, not an additional invoice."])
+            return self.send(pdf, "application/pdf", headers={"Content-Disposition": 'attachment; filename="ST-NW-202610.pdf"'})
         self.send(nw_page("<h3>HTTP 404 - File not found</h3>"), status=404)
 
     # ------------------------------------------------------------ contoso
@@ -339,7 +375,7 @@ class H(BaseHTTPRequestHandler):
         if p == "/signon.cgi":
             err = ""
             if method == "POST":
-                if form.get("acct", "").strip().upper() == "CF-88213" and form.get("pin") == "4417":
+                if form.get("acct", "").strip().upper() == LOGINS["contoso"]["username"] and form.get("pin") == LOGINS["contoso"]["password"]:
                     sid = self.new_sess({"cf": True})
                     return self.redirect("/contoso/", sid)
                 err = "<p><font color=red>SIGNON FAILED - CHECK ACCOUNT NUMBER AND PIN</font></p>"
@@ -416,7 +452,23 @@ BILLED      : {'YES - ' + next(b[0] for b in CONTOSO_BILLS if b[2] == r[0]) if a
             pdf = doc_pdf(["Brightline Building Supply Co.", "1200 W Lake St, Suite 400", "Chicago, IL 60607"], "PURCHASE ORDER",
                           [("PO #", r[0]), ("Date", us(r[1])), ("Vendor", "Contoso Freight Lines")], [(r[3], 1, r[2])], r[2], ["Authorized by: J. Patel, Operations"])
             return self.send(pdf, "application/pdf", headers={"Content-Disposition": f'attachment; filename="{r[0]}.pdf"'})
-        if p in ("/pod.cgi", "/rates.cgi"):
+        if p == "/pod.cgi":
+            trs = "".join(f"<tr><td><a href='/contoso/podprint.cgi?id={r[0]}'>{r[0]} (PDF)</a></td><td>{us(r[1])}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td></tr>" for r in DELIVERIES)
+            return self.send(contoso_frame("Proof of delivery", f"<h3>PROOF OF DELIVERY</h3><table class='r'><tr><th>Record</th><th>Received</th><th>Freight bill</th><th>PO</th><th>Destination</th></tr>{trs}</table>"))
+        if p == "/podprint.cgi":
+            r = next((r for r in DELIVERIES if r[0] == q.get("id")), None)
+            if not r:
+                return self.send("not found", status=404)
+            pdf = pdf_bytes([
+                (50, 740, 18, "Contoso Freight Lines - PROOF OF DELIVERY", True),
+                (50, 700, 12, f"Record: {r[0]}", True),
+                (50, 675, 11, f"Delivered: {us(r[1])} to {r[4]}", False),
+                (50, 650, 11, f"Freight bill: {r[2]}   Customer PO: {r[3]}", False),
+                (50, 625, 11, f"Received in good condition. Signed: {r[5]}", False),
+                (50, 590, 10, "Delivery evidence only. Not an invoice; no amount payable.", False),
+            ])
+            return self.send(pdf, "application/pdf", headers={"Content-Disposition": f'attachment; filename="{r[0]}.pdf"'})
+        if p == "/rates.cgi":
             return self.send(contoso_frame("x", "<p>SYSTEM UNAVAILABLE 0200-0600 CT FOR MAINTENANCE. FUNCTION DISABLED.</p>"))
         self.send(contoso_frame("404", "PAGE NOT FOUND"), status=404)
 
@@ -427,7 +479,7 @@ BILLED      : {'YES - ' + next(b[0] for b in CONTOSO_BILLS if b[2] == r[0]) if a
         if p in ("/", "/Login.aspx"):
             err = ""
             if method == "POST":
-                if form.get("ctl00$Main$txtUserName", "").strip() == "bbs_ap" and form.get("ctl00$Main$txtPassword") == "acme-ap-77":
+                if form.get("ctl00$Main$txtUserName", "").strip() == LOGINS["acme"]["username"] and form.get("ctl00$Main$txtPassword") == LOGINS["acme"]["password"]:
                     sid = self.new_sess({"acme": {"agreed": False}})
                     return self.redirect("/acme/Notice.aspx", sid)
                 err = "<span style='color:red'>Login failed. Your account will be locked after 5 unsuccessful attempts.</span><br>"
@@ -467,7 +519,7 @@ You must acknowledge this notice to continue.</p><a href="javascript:__doPostBac
                     return self.redirect("/acme/Print.aspx?doc=" + urllib.parse.quote(form["__EVENTARGUMENT"][5:]))
             st.update(doctype=doctype, range=rng, page=page, show=show)
             days = {"Last 30 days": 30, "Last 60 days": 60, "Last 90 days": 90}.get(rng, 30)
-            cutoff = (date(2026, 10, 29) - timedelta(days=days)).isoformat()
+            cutoff = (AS_OF - timedelta(days=days)).isoformat()
             grid = ""
             if show:
                 rows = sorted([r for r in ACME_DOCS.get(doctype, []) if r[1] >= cutoff], key=lambda r: r[1], reverse=True)
@@ -507,6 +559,7 @@ Document type: <select name="ctl00$Main$ddlDocType">{dt_opts}</select> &nbsp; Pe
 No. {r[0]}<br>Date {us(r[1])}<br>{ref}: {r[2]}<br>Status: {r[4]}</td></tr></table><br>
 <b>Customer:</b> Brightline Building Supply Co. (C-00918)<br><br><table width="100%" cellspacing=0><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Amount</th></tr>{trs}
 <tr><td></td><td></td><td align=right><b>Total</b></td><td align=right><b>{money(r[3])}</b></td></tr></table>
+<p>{html.escape(ACME_NOTES.get(r[0], ""))}</p>
 <p style="margin-top:30px"><a href="javascript:window.print()">Print this page</a> &nbsp; <a href="/acme/Documents.aspx">Back to documents</a></p></body></html>""")
         self.send("<h2>Server Error in '/' Application.</h2><p>The resource cannot be found.</p>", status=404)
 

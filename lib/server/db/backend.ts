@@ -1,6 +1,6 @@
 import type { FinancialDocument, Issue, LedgerEntry, Run, RunSummary, StorageKind, VaultEntry } from "../../types";
 
-/** Persistence used by the server. Implemented by Supabase (Postgres + Storage) and by local JSON files. */
+/** Persistence used by the server. Implemented by Supabase (Postgres + Storage). */
 export interface Backend {
   kind: StorageKind;
   target: string;
@@ -11,6 +11,8 @@ export interface Backend {
 
   ledger(): Promise<LedgerEntry[]>;
   replaceLedger(entries: LedgerEntry[]): Promise<void>;
+  /** Insert missing demo rows without overwriting any existing ledger entries. */
+  seedLedger(entries: LedgerEntry[]): Promise<void>;
 
   documents(): Promise<FinancialDocument[]>;
   insertDocument(doc: FinancialDocument): Promise<void>;
@@ -20,6 +22,7 @@ export interface Backend {
   issues(): Promise<Issue[]>;
   insertIssue(issue: Issue): Promise<void>;
   updateIssue(id: string, patch: Partial<Issue>): Promise<Issue | undefined>;
+  deleteIssue(id: string): Promise<void>;
 
   run(id: string): Promise<Run | undefined>;
   runs(): Promise<RunSummary[]>;

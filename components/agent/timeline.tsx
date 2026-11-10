@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Px, type PixelName } from "../pixel-icon";
-import { api, duration } from "@/lib/client/api";
+import { Icon, type IconName } from "../icon";
+import { api, brief, duration } from "@/lib/client/api";
 import { Markdown } from "../markdown";
 import type { Run, RunEvent } from "@/lib/types";
 import { Button, Spinner, cx } from "../ui";
@@ -29,7 +29,7 @@ function group(events: RunEvent[]): Item[] {
   return out;
 }
 
-const ICONS: Record<string, PixelName> = {
+const ICONS: Record<string, IconName> = {
   goto: "globe",
   click: "cursor",
   type: "keyboard",
@@ -98,19 +98,19 @@ function TurnView({ turn, run, active, onAnswer }: { turn: Turn; run: Run; activ
             disabled={waiting}
             className="group flex h-7 items-center gap-2 text-[12.5px] text-zinc-500 hover:text-zinc-900 disabled:hover:text-zinc-500"
           >
-            {active ? <Spinner className="text-zinc-700" /> : <Px name="chevron" scale={1} className={cx("transition-transform duration-300", open ? "" : "-rotate-90")} />}
+            {active ? <Spinner className="text-[12px] text-zinc-700" /> : <Icon name="chevron" size={13} className={cx("transition-transform duration-300", open ? "" : "-rotate-90")} />}
             <span className={active && !waiting ? "shimmer-text" : ""}>
               {waiting ? "Waiting for you" : active ? "Thinking" : `Worked for ${duration(Math.max(0, last - first))}`}
             </span>
-            {steps ? <span className="font-mono text-[10.5px] text-zinc-400">{`${steps} ${steps === 1 ? "step" : "steps"}`}</span> : null}
+            {steps ? <span className="tabular text-[12px] text-zinc-400">{`${steps} ${steps === 1 ? "step" : "steps"}`}</span> : null}
           </button>
           <div className="fold" data-closed={!open}>
             <div>
               <div className="relative mt-1 ml-[3px] pl-5">
-                <span aria-hidden className="tree-rail absolute top-0 bottom-2 left-0 w-px bg-zinc-200" />
+                <span aria-hidden className="tree-rail absolute top-0 bottom-2 left-0 w-px bg-zinc-900/[0.14]" />
                 <div className="flex flex-col gap-3">
                   {items.map((it, idx) => (
-                    <div key={it.key} className="tree-node relative before:absolute before:top-[15px] before:-left-5 before:h-px before:w-3 before:bg-zinc-200">
+                    <div key={it.key} className="tree-node relative before:absolute before:top-[15px] before:-left-5 before:h-px before:w-3 before:bg-zinc-900/[0.14]">
                       {it.kind === "group" ? (
                         <ActionGroup rows={it.rows} active={active && idx === items.length - 1} />
                       ) : (
@@ -119,7 +119,7 @@ function TurnView({ turn, run, active, onAnswer }: { turn: Turn; run: Run; activ
                     </div>
                   ))}
                   {thinking ? (
-                    <div className="tree-node relative flex h-8 items-center gap-2 text-[13px] text-zinc-400 before:absolute before:top-[15px] before:-left-5 before:h-px before:w-3 before:bg-zinc-200">
+                    <div className="tree-node relative flex h-8 items-center gap-2 text-[13px] text-zinc-400 before:absolute before:top-[15px] before:-left-5 before:h-px before:w-3 before:bg-zinc-900/[0.14]">
                       <span className="caret">▍</span>
                     </div>
                   ) : null}
@@ -141,7 +141,7 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
     case "user":
       return (
         <div className="rise flex justify-end">
-          <div className="bubble max-w-[85%] rounded-2xl rounded-br-md bg-moss px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap text-[#eef2ea]">{e.text}</div>
+          <div className="bubble max-w-[85%] rounded-[18px] rounded-br-md bg-zinc-900/[0.11] px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap text-zinc-900 shadow-[inset_0_0_0_1px_rgb(244_241_234/0.06)]">{e.text}</div>
         </div>
       );
     case "note":
@@ -152,9 +152,9 @@ function Single({ event: e, run, live, onAnswer }: { event: RunEvent; run: Run; 
       return <Question event={e} live={live && run.status === "waiting" && !e.answer} onAnswer={onAnswer} />;
     case "error":
       return (
-        <div className="rise rounded-lg bg-rose-500/[0.08] px-4 py-3 text-[13.5px] leading-relaxed text-rose-800">
-          <p className="eyebrow !text-rose-700">Stopped</p>
-          <p className="mt-0.5 text-rose-700">{e.text}</p>
+        <div className="rise rounded-[14px] bg-rose-500/[0.1] px-4 py-3 text-[13.5px] leading-relaxed">
+          <p className="font-medium text-rose-700">The agent stopped</p>
+          <p className="mt-0.5 line-clamp-4 text-rose-800/80">{brief(e.text) ?? e.text}</p>
         </div>
       );
     case "summary":
@@ -174,7 +174,7 @@ function ActionGroup({ rows, active }: { rows: Row[]; active: boolean }) {
     <div className="rise flex flex-col">
       {hidden ? (
         <button onClick={() => setOpen(true)} className="mb-1 flex h-7 items-center gap-1.5 self-start rounded-lg px-1 text-[12.5px] text-zinc-500 hover:text-zinc-800">
-          <Px name="chevron" scale={1} />
+          <Icon name="chevron" size={13} />
           {hidden} earlier {hidden === 1 ? "step" : "steps"}
         </button>
       ) : null}
@@ -196,25 +196,25 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
   if (row.kind === "status") {
     return (
       <div className="flex h-8 items-center gap-2.5 px-1 text-[13px] text-zinc-500">
-        <Spinner className="w-3.5 text-[12px] text-zinc-500" />
+        <Spinner className="mx-0.5 text-[12px] text-zinc-500" />
         <span className={running ? "shimmer-text" : ""}>{row.text}</span>
       </div>
     );
   }
   if (row.kind === "document" || row.kind === "match" || row.kind === "issue") {
-    const icon: PixelName = row.kind === "document" ? "docCheck" : row.kind === "match" ? "link" : "alert";
+    const icon: IconName = row.kind === "document" ? "docCheck" : row.kind === "match" ? "link" : "alert";
     const href = row.kind === "issue" ? "/issues" : row.kind === "document" ? `/documents?doc=${row.documentId}` : "/ledger";
     return (
       <Link
         href={href}
         className={cx(
-          "press -mx-1 flex min-h-8 items-center gap-2.5 px-1 py-1 text-[13px]",
-          row.kind === "issue" ? "text-amber-800 hover:bg-amber-500/[0.07]" : "text-zinc-800 hover:bg-zinc-900/[0.04]"
+          "row -mx-1 flex min-h-8 items-center gap-2.5 rounded-lg px-1 py-1 text-[13px]",
+          row.kind === "issue" ? "text-amber-700" : "text-zinc-800"
         )}
       >
-        <Px name={icon} className="shrink-0 text-zinc-500" />
+        <Icon name={icon} className={row.kind === "issue" ? "shrink-0 text-amber-500" : "shrink-0 text-zinc-500"} />
         <span className="min-w-0 flex-1 truncate">{row.label}</span>
-        <span className="font-mono text-[10px] tracking-wider uppercase opacity-50">{row.kind === "document" ? "doc" : row.kind}</span>
+        <span className="pr-1 text-[12px] text-zinc-400">{row.kind === "document" ? "Document" : row.kind === "match" ? "Match" : "Issue"}</span>
       </Link>
     );
   }
@@ -222,16 +222,16 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
   return (
     <div className="group flex min-h-8 items-center gap-2.5 px-1 text-[13px]">
       {running ? (
-        <Spinner className="w-3.5 text-[12px] text-zinc-500" />
+        <Spinner className="mx-0.5 text-[12px] text-zinc-500" />
       ) : row.ok === false ? (
-        <Px name="x" className="shrink-0 text-rose-500" />
+        <Icon name="x" className="shrink-0 text-rose-500" />
       ) : (
-        <Px name={icon} className="shrink-0 text-zinc-400" />
+        <Icon name={icon} className="shrink-0 text-zinc-400" />
       )}
-      <span className={cx("min-w-0 truncate", running ? "shimmer-text font-medium" : row.ok === false ? "text-rose-700" : "text-zinc-600")}>{row.label}</span>
-      {row.ok === false && row.detail ? <span className="min-w-0 flex-1 truncate text-[12px] text-rose-500/80">{row.detail}</span> : <span className="flex-1" />}
+      <span className={cx("min-w-0 truncate", running ? "shimmer-text font-medium" : row.ok === false ? "text-rose-700" : "text-zinc-700")}>{row.label}</span>
+      {row.ok === false && row.detail ? <span className="min-w-0 flex-1 truncate text-[12px] text-rose-600/80">{row.detail}</span> : <span className="flex-1" />}
       {row.ms !== undefined && row.ms >= 50 ? (
-        <span className="tabular shrink-0 font-mono text-[10.5px] text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100">{(row.ms / 1000).toFixed(1)}s</span>
+        <span className="tabular shrink-0 text-[11.5px] text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100">{(row.ms / 1000).toFixed(1)}s</span>
       ) : null}
     </div>
   );
@@ -239,8 +239,8 @@ function ActionRow({ row, running }: { row: Row; running: boolean }) {
 
 function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: "question" }>; live: boolean; onAnswer: (t: string) => void }) {
   return (
-    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-moss">
-      <p className="eyebrow flex items-center gap-1.5 !text-zinc-600">{live ? <><Spinner /> Waiting for you</> : "Question"}</p>
+    <div className="rise card p-4">
+      <p className="flex items-center gap-2 text-[12.5px] font-medium text-amber-700">{live ? "Waiting on you" : <span className="text-zinc-500">Question</span>}</p>
       <Markdown text={event.text} className="mt-1 text-[14.5px] leading-relaxed text-zinc-900" />
       {event.answer ? (
         <p className="mt-3 text-[13px] text-zinc-500">You answered: {event.answer}</p>
@@ -250,14 +250,14 @@ function Question({ event, live, onAnswer }: { event: Extract<RunEvent, { kind: 
             <button
               key={o}
               onClick={() => onAnswer(o)}
-              className="press rounded-lg bg-zinc-900/[0.055] px-3 py-1.5 text-left text-[13px] font-medium text-zinc-800 hover:bg-moss hover:text-lime"
+              className="press rounded-[10px] bg-zinc-900/[0.09] px-3 py-1.5 text-left text-[13px] font-medium text-zinc-900 hover:bg-plaster hover:text-ink"
             >
               {o}
             </button>
           ))}
         </div>
       ) : live ? (
-        <p className="mt-3 font-mono text-[10.5px] tracking-wide text-zinc-400 uppercase">Reply below ↓</p>
+        <p className="mt-3 text-[12.5px] text-zinc-500">Reply in the box below</p>
       ) : null}
     </div>
   );
@@ -269,7 +269,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
   if (!live) {
     return (
       <div className="rise flex min-h-8 items-center gap-2.5 py-1 text-[13px] text-zinc-600">
-        <Px name="key" className="shrink-0 text-zinc-400" />
+        <Icon name="key" className="shrink-0 text-zinc-400" />
         <span className="min-w-0 flex-1 truncate">
           {event.outcome === "saved"
             ? `Login for ${event.site} saved to the vault`
@@ -286,17 +286,13 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
     );
   }
   return (
-    <div className="rise card relative overflow-hidden p-4 pl-5 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-moss">
-      <div className="flex items-start gap-3 px-1">
-        <Px name="key" className="mt-1.5 text-zinc-500" />
-        <div className="min-w-0 flex-1">
-          <p className="eyebrow flex items-center gap-1.5 !text-zinc-600"><Spinner /> Login needed</p>
-          <p className="mt-0.5 text-[14.5px] leading-relaxed text-zinc-900">{`Add the login for ${event.site} to the vault`}</p>
-          {event.reason ? <p className="mt-0.5 text-[13px] text-zinc-500">{event.reason}</p> : null}
-        </div>
-      </div>
-      <div className="mt-3 [&>div]:p-0 [&>div]:shadow-none">
+    <div className="rise card p-4">
+      <p className="flex items-center gap-2 text-[12.5px] font-medium text-amber-700">Login needed</p>
+      <p className="mt-1 text-[14.5px] leading-relaxed text-zinc-900">{`Add the login for ${event.site} to the vault`}</p>
+      {event.reason ? <p className="mt-0.5 text-[13px] text-zinc-500">{event.reason}</p> : null}
+      <div className="mt-3">
         <EntryForm
+          bare
           initial={{ name: event.site, url: event.url }}
           usernameLabel={event.usernameHint || "Username"}
           submitLabel="Save to vault and continue"
@@ -306,7 +302,7 @@ function CredentialRequest({ event, runId, live }: { event: Extract<RunEvent, { 
         />
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <p className="flex-1 font-mono text-[10.5px] tracking-wide text-zinc-400">AES-256-GCM. The agent never sees the password.</p>
+        <p className="flex-1 text-[12.5px] text-zinc-500">The agent can type this password but cannot read it.</p>
         {error ? <span className="text-[12px] text-rose-600">{error}</span> : null}
         <Button
           size="sm"

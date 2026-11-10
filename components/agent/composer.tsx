@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { cx } from "../ui";
-import { Px } from "../pixel-icon";
+import { Icon } from "../icon";
+import { Spinner, cx } from "../ui";
 
 export function Composer({
   placeholder,
@@ -35,7 +35,7 @@ export function Composer({
     const el = ref.current;
     if (!el) return;
     el.style.height = "0px";
-    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 260)}px`;
   }, [value]);
 
   const submit = async () => {
@@ -53,7 +53,7 @@ export function Composer({
   const stop = busy && onStop && !value.trim();
 
   return (
-    <div className="card flex flex-col gap-1 !rounded-2xl p-2 pl-4 transition-shadow focus-within:shadow-[0_0_0_1px_rgb(28_27_24/0.35),0_0_0_4px_rgb(228_242_34/0.35),0_12px_32px_-16px_rgb(28_27_24/0.3)]">
+    <div className="card flex flex-col gap-1 !rounded-[20px] !bg-[rgb(12_11_11/0.74)] p-2.5 pl-5 transition-shadow duration-200 focus-within:shadow-[inset_0_0_0_1px_rgb(244_241_234/0.22),0_0_0_5px_rgb(244_241_234/0.05),0_24px_48px_-32px_rgb(0_0_0/0.9)]">
       <textarea
         ref={ref}
         rows={1}
@@ -68,20 +68,16 @@ export function Composer({
         }}
         placeholder={placeholder}
         className={cx(
-          "scroll-thin resize-none bg-transparent pt-2 leading-relaxed text-zinc-900 outline-none placeholder:text-zinc-400",
-          large ? "min-h-[72px] text-[15.5px]" : "text-[14px]"
+          "scroll-thin resize-none bg-transparent pt-2.5 pr-2 leading-relaxed text-zinc-900 outline-none placeholder:text-zinc-600",
+          large ? "min-h-[64px] text-[16px]" : "text-[14.5px]"
         )}
       />
       <div className="flex items-center gap-2">
-        {tools}
-        <span className="flex-1 truncate font-mono text-[10.5px] tracking-wide text-zinc-400">{stop ? "working" : "↵ send"}</span>
+        <div className="-ml-2">{tools}</div>
+        <span className="flex-1" />
         {stop ? (
-          <button
-            onClick={onStop}
-            title="Stop"
-            className="press flex h-8 items-center gap-2 rounded-lg bg-moss px-3 font-mono text-[11px] tracking-wider text-[#f1f4ec] uppercase hover:bg-moss-2"
-          >
-            <span className="size-2 bg-zinc-50" />
+          <button onClick={onStop} title="Stop the agent" className="press flex h-9 items-center gap-1.5 rounded-full bg-zinc-900/[0.12] pr-3.5 pl-2.5 text-[13px] font-medium text-zinc-900 hover:bg-zinc-900/[0.18]">
+            <Icon name="stop" />
             Stop
           </button>
         ) : (
@@ -89,10 +85,10 @@ export function Composer({
             onClick={() => void submit()}
             disabled={!value.trim() || sending}
             title="Send"
-            className="press flex h-8 items-center gap-2 rounded-lg bg-moss px-3 font-mono text-[11px] tracking-wider text-lime uppercase hover:bg-lime hover:text-moss disabled:bg-zinc-900/[0.07] disabled:text-zinc-400"
+            aria-label="Send"
+            className="press flex size-9 items-center justify-center rounded-full bg-plaster text-ink hover:bg-white disabled:bg-zinc-900/[0.12] disabled:text-zinc-500"
           >
-            {sending ? "Sending" : "Run"}
-            <Px name="next" scale={1} />
+            {sending ? <Spinner className="text-[13px]" /> : <Icon name="arrowUp" size={18} />}
           </button>
         )}
       </div>

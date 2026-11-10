@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Px } from "./pixel-icon";
-import { api, type WorkspaceState } from "@/lib/client/api";
+import { Icon } from "./icon";
+import { api, brief, type WorkspaceState } from "@/lib/client/api";
 import type { Provider, PublicPortal } from "@/lib/types";
 import { Button, PageHeader, Panel, Segmented, cx, inputClass } from "./ui";
 import { useWorkspace } from "./workspace-provider";
@@ -24,6 +24,10 @@ export function SettingsView() {
   const [saved, setSaved] = useState(false);
   const [box, setBox] = useState<WorkspaceState>();
   const [resetting, setResetting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [sampling, setSampling] = useState(false);
+  const [demoMessage, setDemoMessage] = useState<string>();
+  const [demoError, setDemoError] = useState<string>();
 
   useEffect(() => {
     if (!settings) return;
@@ -89,7 +93,7 @@ export function SettingsView() {
                   { value: "openai", label: "OpenAI" },
                 ]}
               />
-              <span className={cx("text-[12.5px]", available[provider] ? "text-emerald-700" : "text-amber-700")}>
+              <span className={cx("text-[12.5px]", available[provider] ? "text-emerald-600" : "text-amber-600")}>
                 {available[provider]
                   ? "Credentials found"
                   : provider === "anthropic"
@@ -133,20 +137,20 @@ export function SettingsView() {
                   <Link
                     href="/vault"
                     className={cx(
-                      "flex h-9 shrink-0 items-center rounded-lg px-3 text-[12.5px] font-medium transition-colors",
-                      p.vaultId ? "bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15" : "bg-amber-500/12 text-amber-900 hover:bg-amber-500/20"
+                      "flex h-9 shrink-0 items-center rounded-[10px] px-3 text-[12.5px] font-medium transition-colors",
+                      p.vaultId ? "bg-emerald-500/[0.12] text-emerald-800 hover:bg-emerald-500/[0.18]" : "bg-amber-500/[0.13] text-amber-800 hover:bg-amber-500/20"
                     )}
                   >
                     {p.vaultId ? "Login in vault" : "No login saved"}
                   </Link>
                   <Button variant="danger" onClick={() => setPortals((all) => all.filter((x) => x.key !== p.key))} title="Remove portal">
-                    <Px name="trash" />
+                    <Icon name="trash" />
                   </Button>
                 </div>
               </Panel>
             ))}
             <Button className="self-start" onClick={() => setPortals((all) => [...all, { key: `new-${Date.now()}`, name: "", url: "" }])}>
-              <Px name="plus" />
+              <Icon name="plus" size={15} />
               Add portal
             </Button>
           </div>
@@ -158,8 +162,8 @@ export function SettingsView() {
               <p className="text-[13.5px] font-medium text-zinc-900">
                 {box?.state === "ready" ? "Ready" : box?.state === "provisioning" ? "Starting" : box?.state === "error" ? "Unavailable" : available.sail ? "Asleep" : "Not configured"}
               </p>
-              <p className="truncate text-[12.5px] text-zinc-500">
-                {!available.sail ? "Set SAIL_API_KEY in .env.local" : box?.message ?? box?.sailboxId ?? "Created on first task"}
+              <p className="line-clamp-2 text-[12.5px] text-zinc-500">
+                {!available.sail ? "Set SAIL_API_KEY in .env.local" : brief(box?.message) ?? box?.sailboxId ?? "Created on first task"}
               </p>
             </div>
             {available.sail ? (
@@ -183,24 +187,80 @@ export function SettingsView() {
                   : "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local to use Supabase"}
               </p>
             </div>
-            <span className={cx("text-[12.5px]", settings.settings.storage.ok ? "text-emerald-700" : "text-amber-700")}>
-              {settings.settings.storage.ok ? "Connected" : settings.settings.storage.message}
+            <span className={cx("text-[12.5px]", settings.settings.storage.ok ? "text-emerald-600" : "text-amber-600")}>
+              {settings.settings.storage.ok ? "Connected" : brief(settings.settings.storage.message)}
             </span>
           </Panel>
         </Section>
 
-        <Section title="Data" hint="Clears retrieved documents, issues and task history, and restores the sample ledger.">
+        <Section title="October demo" hint="Restore the three sandbox logins, missing sample ledger rows and finance rules. Retrieved documents and task history are kept.">
+          <Button
+            className="self-start"
+            loading={restoring}
+            disabled={resetting}
+            onClick={async () => {
+              setRestoring(true);
+              setDemoMessage(undefined);
+              setDemoError(undefined);
+              try {
+                await api.restoreDemo();
+                const next = await api.settings();
+                setSettings(next);
+                await refreshData();
+                setDemoMessage("Demo ready. Start a new chat and ask for the October close.");
+              } catch (e) {
+                setDemoError((e as Error).message);
+              } finally {
+                setRestoring(false);
+              }
+            }}
+          >
+            Restore demo data
+          </Button>
+          <p className="mt-5 mb-3 max-w-[620px] text-[13px] leading-relaxed text-zinc-500">
+            Or fill the workspace with a finished sample close: 23 documents with originals, their ledger matches, 9 issues and the chat that produced them. Use it to show the app when you can&apos;t run a live task.
+          </p>
+          <Button
+            className="self-start"
+            loading={sampling}
+            disabled={resetting || restoring}
+            onClick={async () => {
+              setSampling(true);
+              setDemoMessage(undefined);
+              setDemoError(undefined);
+              try {
+                const r = await api.loadSample();
+                await Promise.all([refreshData(), refreshRuns()]);
+                setDemoMessage(`Loaded ${r.documents} sample documents and ${r.issues} issues. Open the newest chat to see the close.`);
+              } catch (e) {
+                setDemoError((e as Error).message);
+              } finally {
+                setSampling(false);
+              }
+            }}
+          >
+            Load sample results
+          </Button>
+          {demoMessage ? <p role="status" className="rise mt-2 text-[13px] text-emerald-600">{demoMessage}</p> : null}
+          {demoError ? <p role="alert" className="mt-2 text-[13px] text-rose-600">{demoError}</p> : null}
+        </Section>
+        <Section title="Data" hint="Start a fresh demo: clear retrieved documents, issues and task history, and restore the sample ledger, logins and finance rules.">
           <Button
             variant="danger"
             className="self-start"
             loading={resetting}
+            disabled={restoring}
             onClick={async () => {
-              if (!confirm("Clear all documents, issues and tasks?")) return;
+              if (!confirm("Clear all documents, issues and tasks, replace the ledger with demo entries, and restore demo logins and finance rules?")) return;
               setResetting(true);
+              setDemoError(undefined);
               try {
                 await api.reset();
                 await Promise.all([refreshData(), refreshRuns()]);
+                setSettings(await api.settings());
                 router.push("/");
+              } catch (e) {
+                setDemoError((e as Error).message);
               } finally {
                 setResetting(false);
               }
@@ -224,12 +284,12 @@ function ModelPicker({ options, value, onChange }: { options: { id: string; labe
             key={o.id}
             onClick={() => onChange(o.id)}
             className={cx(
-              "press rounded-lg px-3.5 py-2.5 text-left",
-              o.id === value ? "bg-moss text-[#eef2ea]" : "bg-zinc-900/[0.04] text-zinc-800 hover:bg-zinc-900/[0.07]"
+              "press rounded-[10px] px-3.5 py-2.5 text-left",
+              o.id === value ? "bg-plaster text-ink" : "bg-zinc-900/[0.06] text-zinc-800 hover:bg-zinc-900/[0.1]"
             )}
           >
             <p className="text-[13px] font-medium">{o.label}</p>
-            <p className={cx("text-[12px]", o.id === value ? "text-zinc-300" : "text-zinc-500")}>{o.hint}</p>
+            <p className={cx("text-[12px]", o.id === value ? "text-ink/60" : "text-zinc-500")}>{o.hint}</p>
           </button>
         ))}
       </div>
@@ -242,8 +302,8 @@ function ModelPicker({ options, value, onChange }: { options: { id: string; labe
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col">
-      <h2 className="text-[20px] font-semibold tracking-[-0.03em] text-zinc-900">{title}</h2>
-      {hint ? <p className="mt-0.5 mb-3 text-[13px] text-zinc-500">{hint}</p> : <div className="mb-3" />}
+      <h2 className="display text-[26px] text-zinc-900">{title}</h2>
+      {hint ? <p className="mt-1.5 mb-3.5 max-w-[620px] text-[13px] leading-relaxed text-zinc-500">{hint}</p> : <div className="mb-3" />}
       {children}
     </section>
   );

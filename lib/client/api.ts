@@ -51,6 +51,8 @@ export const api = {
   warmWorkspace: () => call<WorkspaceState>("/api/workspace", { method: "POST" }),
   importLedger: (csv: string) => call<LedgerEntry[]>("/api/ledger", { method: "PUT", json: { csv } }),
   reset: () => call("/api/reset", { method: "POST" }),
+  restoreDemo: () => call<{ ok: true }>("/api/demo", { method: "POST" }),
+  loadSample: () => call<{ ok: true; documents: number; issues: number }>("/api/demo/sample", { method: "POST" }),
   storage: () => call<StorageStatus>("/api/storage"),
   memory: () => call<MemoryNode[]>("/api/memory"),
   addMemory: (m: MemoryDraft) => call<MemoryNode>("/api/memory", { method: "POST", json: m }),
@@ -74,7 +76,7 @@ export interface VaultDraft {
 }
 
 export const money = (n: number | undefined, currency = "USD") =>
-  n === undefined || Number.isNaN(n) ? "—" : n.toLocaleString("en-US", { style: "currency", currency });
+  n === undefined || Number.isNaN(n) ? "" : n.toLocaleString("en-US", { style: "currency", currency });
 
 export const docTypeLabel: Record<FinancialDocument["type"], string> = {
   invoice: "Invoice",
@@ -84,6 +86,13 @@ export const docTypeLabel: Record<FinancialDocument["type"], string> = {
   statement: "Statement",
   other: "Document",
 };
+
+/** One readable line from a server error: the upstream "message" if there is one, never a proxy's HTML page. */
+export function brief(m?: string) {
+  if (!m) return undefined;
+  const inner = m.match(/\\?"message\\?":\s*\\?"([^"\\]+)/)?.[1];
+  return (inner ?? m.replace(/<[^>]*>/g, " ").split("\n")[0]).trim().slice(0, 160);
+}
 
 export function ago(t: number) {
   const s = Math.max(1, Math.round((Date.now() - t) / 1000));
@@ -102,7 +111,7 @@ export function duration(ms: number) {
 }
 
 export function shortDate(d?: string) {
-  if (!d) return "—";
+  if (!d) return "";
   const dt = new Date(`${d}T00:00:00`);
   if (Number.isNaN(dt.getTime())) return d;
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

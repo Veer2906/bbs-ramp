@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import path from "node:path";
-import { createClient, type PostgrestError } from "@supabase/supabase-js";
+import { createClient, type PostgrestError, type SupabaseClient } from "@supabase/supabase-js";
 import type { FinancialDocument, Issue, LedgerEntry, Run, RunSummary, VaultEntry } from "../../types";
 import { StorageSetupError, type Backend } from "./backend";
 
@@ -198,14 +198,15 @@ async function migrate(dbUrl: string) {
 }
 
 /** Supabase Postgres for records and a private Storage bucket for document files. Server-only, service-role key. */
-export function supabaseBackend(opts: { url: string; key: string; dbUrl?: string; bucket: string }): Backend {
-  const db = createClient(opts.url, opts.key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const bucket = () => db.storage.from(opts.bucket);
+export function supabaseBackend(opts: { url?: string; key?: string; dbUrl?: string; bucket: string }): Backend {
+  let _db: SupabaseClient | undefined;
+  const db = () => (_db ??= createClient(opts.url!, opts.key!, { auth: { persistSession: false, autoRefreshToken: false } }));
+  const bucket = () => db().storage.from(opts.bucket);
 
   async function all(table: string, columns = "*", order = "created_at"): Promise<Row[]> {
     const out: Row[] = [];
     for (let from = 0; ; from += 1000) {
-      const rows = check(await db.from(table).select(columns).order(order).range(from, from + 999), `read ${table}`) as unknown as Row[];
+      const rows = check(await db().from(table).select(columns).order(order).range(from, from + 999), `read ${table}`) as unknown as Row[];
       out.push(...rows);
       if (rows.length < 1000) return out;
     }
@@ -213,15 +214,22 @@ export function supabaseBackend(opts: { url: string; key: string; dbUrl?: string
 
   return {
     kind: "supabase",
-    target: new URL(opts.url).host,
+    get target() {
+      try {
+        return opts.url ? new URL(opts.url).host : "not configured";
+      } catch {
+        return opts.url ?? "not configured";
+      }
+    },
 
     async init() {
-      const probe = await db.from("vault_entries").select("id").limit(1);
+      if (!opts.url || !opts.key) throw new StorageSetupError("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local. Storage is Supabase-only.");
+      const probe = await db().from("vault_entries").select("id").limit(1);
       if (probe.error && MISSING_TABLE.has(probe.error.code)) {
         if (!opts.dbUrl) throw new StorageSetupError(setupHint());
         await migrate(opts.dbUrl);
         for (let i = 0; i < 20; i++) {
-          const again = await db.from("vault_entries").select("id").limit(1);
+          const again = await db().from("vault_entries").select("id").limit(1);
           if (!again.error) break;
           if (i === 19) throw new StorageSetupError(`Created the tables but Supabase cannot see them yet: ${again.error.message}`);
           await new Promise((r) => setTimeout(r, 500));
@@ -229,28 +237,31 @@ export function supabaseBackend(opts: { url: string; key: string; dbUrl?: string
       } else if (probe.error) {
         throw new StorageSetupError(`Cannot reach Supabase: ${probe.error.message}`);
       }
-      const b = await db.storage.getBucket(opts.bucket);
+      const b = await db().storage.getBucket(opts.bucket);
       if (b.error) {
-        const made = await db.storage.createBucket(opts.bucket, { public: false });
+        const made = await db().storage.createBucket(opts.bucket, { public: false });
         if (made.error && !/exists/i.test(made.error.message)) throw new StorageSetupError(`Cannot create the ${opts.bucket} storage bucket: ${made.error.message}`);
       }
     },
 
     async getState<T>(key: string) {
-      const rows = check(await db.from("app_state").select("value").eq("key", key).limit(1), "read state") as Row[];
+      const rows = check(await db().from("app_state").select("value").eq("key", key).limit(1), "read state") as Row[];
       return rows[0]?.value as T | undefined;
     },
     async setState(key, value) {
-      check(await db.from("app_state").upsert({ key, value, updated_at: new Date().toISOString() }), "write state");
+      check(await db().from("app_state").upsert({ key, value, updated_at: new Date().toISOString() }), "write state");
     },
 
     async ledger() {
       return (await all("ledger_entries", "*", "date")).map(ledgerFrom);
     },
+    async seedLedger(entries) {
+      if (entries.length) check(await db().from("ledger_entries").upsert(entries.map(ledgerRow), { onConflict: "id", ignoreDuplicates: true }), "seed ledger");
+    },
     async replaceLedger(entries) {
-      check(await db.from("ledger_entries").delete().neq("id", ""), "clear ledger");
+      check(await db().from("ledger_entries").delete().neq("id", ""), "clear ledger");
       for (let i = 0; i < entries.length; i += 500) {
-        check(await db.from("ledger_entries").insert(entries.slice(i, i + 500).map(ledgerRow)), "write ledger");
+        check(await db().from("ledger_entries").insert(entries.slice(i, i + 500).map(ledgerRow)), "write ledger");
       }
     },
 
@@ -258,37 +269,40 @@ export function supabaseBackend(opts: { url: string; key: string; dbUrl?: string
       return (await all("documents")).map(docFrom);
     },
     async insertDocument(doc) {
-      check(await db.from("documents").insert(docRow(doc)), "save document");
+      check(await db().from("documents").insert(docRow(doc)), "save document");
     },
     async updateDocument(id, patch) {
       const { id: _id, ...rest } = patch;
       void _id;
-      const rows = check(await db.from("documents").update(docRow(rest)).eq("id", id).select(), "update document") as Row[];
+      const rows = check(await db().from("documents").update(docRow(rest)).eq("id", id).select(), "update document") as Row[];
       return rows[0] ? docFrom(rows[0]) : undefined;
     },
     async deleteDocument(id) {
-      check(await db.from("documents").delete().eq("id", id), "delete document");
+      check(await db().from("documents").delete().eq("id", id), "delete document");
     },
 
     async issues() {
       return (await all("issues")).map(issueFrom);
     },
     async insertIssue(issue) {
-      check(await db.from("issues").insert(issueRow(issue)), "save issue");
+      check(await db().from("issues").insert(issueRow(issue)), "save issue");
+    },
+    async deleteIssue(id) {
+      check(await db().from("issues").delete().eq("id", id), "delete issue");
     },
     async updateIssue(id, patch) {
       const { id: _id, ...rest } = patch;
       void _id;
-      const rows = check(await db.from("issues").update(issueRow(rest)).eq("id", id).select(), "update issue") as Row[];
+      const rows = check(await db().from("issues").update(issueRow(rest)).eq("id", id).select(), "update issue") as Row[];
       return rows[0] ? issueFrom(rows[0]) : undefined;
     },
 
     async run(id) {
-      const rows = check(await db.from("runs").select("*").eq("id", id).limit(1), "read run") as Row[];
+      const rows = check(await db().from("runs").select("*").eq("id", id).limit(1), "read run") as Row[];
       return rows[0] ? runFrom(rows[0]) : undefined;
     },
     async runs(): Promise<RunSummary[]> {
-      const rows = check(await db.from("runs").select(RUN_SUMMARY).order("created_at", { ascending: false }).limit(200), "list runs") as unknown as Row[];
+      const rows = check(await db().from("runs").select(RUN_SUMMARY).order("created_at", { ascending: false }).limit(200), "list runs") as unknown as Row[];
       return rows.map((r) => {
         const { events: _e, plan: _p, instruction: _i, provider: _v, browser: _b, ...s } = runFrom(r);
         void [_e, _p, _i, _v, _b];
@@ -297,7 +311,7 @@ export function supabaseBackend(opts: { url: string; key: string; dbUrl?: string
     },
     async saveRun(run) {
       check(
-        await db.from("runs").upsert({
+        await db().from("runs").upsert({
           id: run.id,
           title: run.title,
           instruction: run.instruction,
@@ -315,17 +329,17 @@ export function supabaseBackend(opts: { url: string; key: string; dbUrl?: string
       );
     },
     async deleteRun(id) {
-      check(await db.from("runs").delete().eq("id", id), "delete run");
+      check(await db().from("runs").delete().eq("id", id), "delete run");
     },
 
     async vault() {
       return (await all("vault_entries")).map(vaultFrom);
     },
     async putVault(entry) {
-      check(await db.from("vault_entries").upsert(vaultRow(entry)), "save vault entry");
+      check(await db().from("vault_entries").upsert(vaultRow(entry)), "save vault entry");
     },
     async deleteVault(id) {
-      check(await db.from("vault_entries").delete().eq("id", id), "delete vault entry");
+      check(await db().from("vault_entries").delete().eq("id", id), "delete vault entry");
     },
 
     async putFile(name, data, contentType) {
@@ -339,7 +353,7 @@ export function supabaseBackend(opts: { url: string; key: string; dbUrl?: string
     },
 
     async clearWorkspace() {
-      for (const t of ["documents", "issues", "runs"]) check(await db.from(t).delete().neq("id", ""), `clear ${t}`);
+      for (const t of ["documents", "issues", "runs"]) check(await db().from(t).delete().neq("id", ""), `clear ${t}`);
       for (;;) {
         const { data } = await bucket().list("", { limit: 1000 });
         const names = (data ?? []).filter((f) => f.id).map((f) => f.name);

@@ -44,3 +44,7 @@ next-env.d.ts
 /.data
 __pycache__/
 !.env.example
+
+# local notes and tooling, not part of the project
+/.local
+/.claude

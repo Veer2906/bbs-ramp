@@ -5,8 +5,9 @@ import { useMemo, useState } from "react";
 import { api, docTypeLabel, money, shortDate } from "@/lib/client/api";
 import type { FinancialDocument } from "@/lib/types";
 import { DocStatus } from "./doc-status";
-import { Px } from "./pixel-icon";
-import { Button, Empty, PageHeader, Panel, Segmented, cx, inputClass } from "./ui";
+import { Markdown } from "./markdown";
+import { Icon } from "./icon";
+import { Button, CloseButton, Empty, PageHeader, Panel, Segmented, cx, inputClass } from "./ui";
 import { useWorkspace } from "./workspace-provider";
 
 type TypeFilter = "all" | FinancialDocument["type"];
@@ -40,11 +41,11 @@ export function DocumentsView() {
       <div className="scroll-thin min-w-0 flex-1 overflow-y-auto pb-10">
         <PageHeader
           title="Documents"
-          subtitle={data.documents.length ? `${data.documents.length} retrieved · ${money(total)} invoiced in view` : "Everything the agent retrieves lands here"}
+          subtitle={data.documents.length ? `${data.documents.length} retrieved, ${money(total)} invoiced in view` : "Everything the agent retrieves lands here"}
         />
         <div className="flex flex-wrap items-center gap-3 px-8 pb-4">
           <div className="relative w-64">
-            <Px name="search" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-500" />
+            <Icon name="search" size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-500" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Vendor, number or PO" className={cx(inputClass, "pl-9")} />
           </div>
           <Segmented<StatusFilter>
@@ -90,7 +91,7 @@ export function DocumentsView() {
                     <tr
                       key={d.id}
                       onClick={() => select(d.id)}
-                      className={cx("cursor-pointer transition-colors ", d.id === selectedId ? "bg-zinc-900/[0.05]" : "hover:bg-zinc-900/[0.03]")}
+                      className={cx("cursor-pointer transition-colors [&>td:first-child]:rounded-l-[10px] [&>td:last-child]:rounded-r-[10px]", d.id === selectedId ? "bg-zinc-900/[0.09]" : "hover:bg-zinc-900/[0.05]")}
                     >
                       <td className="px-3 py-2.5">
                         <p className="font-medium text-zinc-900">{d.number}</p>
@@ -98,7 +99,7 @@ export function DocumentsView() {
                       </td>
                       <td className="px-3 py-2.5 text-zinc-700">{d.vendor}</td>
                       <td className="tabular px-3 py-2.5 whitespace-nowrap text-zinc-600">{shortDate(d.date)}</td>
-                      <td className="px-3 py-2.5 font-mono text-[12px] whitespace-nowrap text-zinc-500">{d.poNumber ?? "—"}</td>
+                      <td className="tabular px-3 py-2.5 whitespace-nowrap text-zinc-500">{d.poNumber ?? ""}</td>
                       <td className="tabular px-3 py-2.5 text-right font-medium text-zinc-900">{money(d.amount, d.currency)}</td>
                       <td className="px-3 py-2.5">
                         <DocStatus status={d.status} />
@@ -139,22 +140,20 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
     ["Vendor", doc.vendor],
     ["Date", shortDate(doc.date)],
     ["Due", shortDate(doc.dueDate)],
-    ["PO", doc.poNumber ?? "—"],
-    ["Reference", doc.reference ?? "—"],
+    ["PO", doc.poNumber],
+    ["Reference", doc.reference],
   ];
 
   return (
-    <aside className="rise flex w-[520px] shrink-0 flex-col bg-[#fffefb] shadow-[-1px_0_0_rgba(28,27,24,0.07),-24px_0_48px_-32px_rgba(28,27,24,0.3)]">
+    <aside className="drawer card my-3 mr-3 flex w-[520px] shrink-0 flex-col !rounded-[18px]">
       <div className="flex items-start gap-3 px-6 pt-6 pb-4">
         <div className="min-w-0 flex-1">
           <p className="text-[12px] text-zinc-500">{doc.vendor}</p>
-          <h2 className="truncate text-[19px] font-semibold tracking-tight text-zinc-900">{doc.number}</h2>
-          <p className="tabular mt-1 text-[24px] font-semibold tracking-tight text-zinc-900">{money(doc.amount, doc.currency)}</p>
+          <h2 className="truncate text-[15px] font-medium text-zinc-900">{doc.number}</h2>
+          <p className="display tabular mt-2 text-[38px] text-zinc-950">{money(doc.amount, doc.currency)}</p>
         </div>
         <DocStatus status={doc.status} />
-        <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-900/5 hover:text-zinc-800" title="Close">
-          <Px name="x" />
-        </button>
+        <CloseButton onClick={onClose} />
       </div>
 
       <div className="scroll-thin flex-1 overflow-y-auto px-6 pb-6">
@@ -162,12 +161,12 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
           {fields.map(([k, v]) => (
             <div key={k} className="min-w-0">
               <p className="eyebrow">{k}</p>
-              <p className="truncate text-[13px] text-zinc-800">{v}</p>
+              <p className={cx("truncate text-[13px]", v ? "text-zinc-800" : "text-zinc-400")}>{v || "None"}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-5 rounded-lg bg-zinc-900/[0.035] p-3.5">
+        <div className="mt-5 rounded-[12px] bg-zinc-900/[0.05] p-3.5">
           <p className="eyebrow">Ledger match</p>
           {entry ? (
             <div className="mt-1 flex items-baseline justify-between gap-3">
@@ -185,9 +184,9 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         {issues.length ? (
           <div className="mt-3 flex flex-col gap-2">
             {issues.map((i) => (
-              <div key={i.id} className="rounded-lg bg-amber-500/[0.08] p-3.5">
+              <div key={i.id} className="rounded-[12px] bg-amber-500/[0.1] p-3.5">
                 <p className="text-[13px] font-medium text-amber-900">{i.title}</p>
-                <p className="mt-0.5 text-[12.5px] leading-relaxed text-amber-800/80">{i.detail}</p>
+                <Markdown text={i.detail} className="mt-0.5 text-[12.5px] leading-relaxed text-amber-800/80" />
               </div>
             ))}
           </div>
@@ -213,7 +212,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         {doc.notes ? <p className="mt-4 text-[12.5px] leading-relaxed text-zinc-500">{doc.notes}</p> : null}
 
         {doc.fileName ? (
-          <div className="mt-5 overflow-hidden rounded-lg bg-zinc-100">
+          <div className="mt-5 overflow-hidden rounded-[12px] bg-white">
             {isPdf ? (
               <iframe src={`/api/files/${doc.id}#toolbar=0&navpanes=0&view=FitH`} className="h-[520px] w-full" title={doc.number} />
             ) : isImage ? (
@@ -224,7 +223,7 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
             )}
           </div>
         ) : null}
-        {doc.sourceUrl ? <p className="mt-2 truncate font-mono text-[11px] text-zinc-400">Source: {doc.sourceUrl}</p> : null}
+        {doc.sourceUrl ? <p className="mt-2 truncate text-[12px] text-zinc-400">Source: {doc.sourceUrl}</p> : null}
       </div>
 
       <div className="flex items-center gap-2 px-6 pt-3 pb-5">
@@ -236,8 +235,8 @@ function DocumentDrawer({ doc, onClose, onChange }: { doc: FinancialDocument; on
         </Button>
         <span className="flex-1" />
         {doc.fileName ? (
-          <a href={`/api/files/${doc.id}?download`} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13.5px] font-medium text-zinc-600 hover:bg-zinc-900/5 hover:text-zinc-900">
-            <Px name="download" />
+          <a href={`/api/files/${doc.id}?download`} className="press inline-flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-[13.5px] font-medium text-zinc-600 hover:bg-zinc-900/[0.07] hover:text-zinc-900">
+            <Icon name="download" />
             Download
           </a>
         ) : null}

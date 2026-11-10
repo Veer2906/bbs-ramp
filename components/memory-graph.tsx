@@ -190,7 +190,7 @@ export function MemoryGraph({ nodes, selected, onSelect }: { nodes: MemoryNode[]
           const p = pos[n.id];
           const h = pos[hub(n.kind)];
           if (!p || !h) return null;
-          return <line key={`h-${n.id}`} x1={h.x} y1={h.y} x2={p.x} y2={p.y} className="stroke-zinc-200" strokeWidth={1} />;
+          return <line key={`h-${n.id}`} x1={h.x} y1={h.y} x2={p.x} y2={p.y} className="stroke-zinc-900/[0.1]" strokeWidth={1} />;
         })}
         {links.map((e) => {
           const p = pos[e.a];
@@ -204,7 +204,7 @@ export function MemoryGraph({ nodes, selected, onSelect }: { nodes: MemoryNode[]
               y1={p.y}
               x2={q.x}
               y2={q.y}
-              className={cx("transition-[stroke,opacity] duration-200", on ? "flow stroke-moss" : "stroke-zinc-400", focus && !on && "opacity-30")}
+              className={cx("transition-[stroke,opacity] duration-200", on ? "flow stroke-zinc-950" : "stroke-zinc-900/30", focus && !on && "opacity-30")}
               strokeWidth={on ? 1.6 : 1}
               strokeDasharray={on ? undefined : e.explicit ? undefined : "3 3"}
             />
@@ -213,12 +213,12 @@ export function MemoryGraph({ nodes, selected, onSelect }: { nodes: MemoryNode[]
         {kinds.map((k) => {
           const p = pos[hub(k)];
           if (!p) return null;
-          const label = KIND_LABEL[k].toUpperCase();
-          const w = label.length * 6.4 + 18;
+          const label = KIND_LABEL[k];
+          const w = label.length * 6.2 + 22;
           return (
             <g key={k} className="graph-node cursor-grab active:cursor-grabbing" onPointerDown={grab(hub(k))} style={{ opacity: focus && !nodes.some((n) => n.kind === k && near.has(n.id)) ? 0.4 : 1, transition: "opacity 200ms" }}>
-              <rect x={p.x - w / 2} y={p.y - 10} width={w} height={20} rx={10} className="fill-zinc-900" />
-              <text x={p.x} y={p.y + 3.5} textAnchor="middle" className="pointer-events-none fill-zinc-50 font-mono text-[9.5px] tracking-[0.08em]">
+              <rect x={p.x - w / 2} y={p.y - 11} width={w} height={22} rx={11} className="fill-[#1f1e1d] stroke-zinc-900/20" strokeWidth={1} />
+              <text x={p.x} y={p.y + 3.8} textAnchor="middle" className="pointer-events-none fill-zinc-800 text-[10.5px] font-medium">
                 {label}
               </text>
             </g>
@@ -239,8 +239,8 @@ export function MemoryGraph({ nodes, selected, onSelect }: { nodes: MemoryNode[]
               onPointerLeave={() => setHover(undefined)}
             >
               <circle cx={p.x} cy={p.y} r={18} fill="transparent" />
-              {n.id === selected ? <circle cx={p.x} cy={p.y} r={r + 5} className="fill-none stroke-moss/40" strokeWidth={1} /> : null}
-              <circle cx={p.x} cy={p.y} r={r} className={n.id === selected ? "fill-moss stroke-moss" : "fill-[#fffefb] stroke-zinc-900"} strokeWidth={1.5} />
+              {n.id === selected ? <circle cx={p.x} cy={p.y} r={r + 5} className="fill-none stroke-zinc-900/40" strokeWidth={1} /> : null}
+              <circle cx={p.x} cy={p.y} r={r} className={n.id === selected ? "fill-zinc-950 stroke-zinc-950" : "fill-[#141413] stroke-zinc-800"} strokeWidth={1.5} />
               <text x={p.x} y={p.y + r + 14} textAnchor="middle" className="pointer-events-none fill-zinc-700 text-[11px] font-medium">
                 {n.title.length > 24 ? `${n.title.slice(0, 23)}…` : n.title}
               </text>
@@ -250,15 +250,15 @@ export function MemoryGraph({ nodes, selected, onSelect }: { nodes: MemoryNode[]
       </svg>
       {hovered && hp && !dragging ? (
         <div
-          className="pop pointer-events-none absolute z-10 w-[240px] rounded-xl bg-zinc-900 px-3 py-2.5 text-[12.5px] leading-relaxed text-zinc-100 shadow-lg"
+          className="pop sheet pointer-events-none absolute z-10 w-[250px] rounded-[14px] px-3.5 py-3 text-[12.5px] leading-relaxed"
           style={{ left: `${Math.min(Math.max((hp.x / W) * 100, 16), 84)}%`, top: `${(hp.y / H) * 100}%`, transform: hp.y > H * 0.6 ? "translate(-50%, calc(-100% - 18px))" : "translate(-50%, 22px)" }}
         >
-          <p className="font-mono text-[9.5px] tracking-[0.08em] text-zinc-400 uppercase">{KIND_LABEL[hovered.kind]}</p>
-          <p className="mt-0.5 font-medium text-white">{hovered.title}</p>
-          {hovered.detail ? <p className="mt-1 line-clamp-3 text-zinc-300">{hovered.detail}</p> : null}
+          <p className="text-[11.5px] text-zinc-500">{KIND_LABEL[hovered.kind]}</p>
+          <p className="mt-0.5 font-medium text-zinc-950">{hovered.title}</p>
+          {hovered.detail ? <p className="mt-1 line-clamp-3 text-zinc-600">{hovered.detail}</p> : null}
         </div>
       ) : null}
-      <p className="pointer-events-none absolute bottom-3 left-4 text-[11.5px] text-zinc-400">Drag to rearrange, click a fact to edit</p>
+      <p className="pointer-events-none absolute bottom-3 left-4 text-[12px] text-zinc-500">Drag to rearrange. Click a fact to edit it.</p>
     </div>
   );
 }

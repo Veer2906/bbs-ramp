@@ -1,5 +1,10 @@
 import { VaultView } from "@/components/vault-view";
+import { PageTransition } from "@/components/page-transition";
 
 export default function Page() {
-  return <VaultView />;
+  return (
+    <PageTransition>
+      <VaultView />
+    </PageTransition>
+  );
 }

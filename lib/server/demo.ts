@@ -1,49 +1,28 @@
-import type { LedgerEntry, Portal } from "../types";
+import "server-only";
+import type { LedgerEntry, MemoryNode, Portal } from "../types";
+import fixture from "../../sailbox/demo.json";
 
-export interface DemoLogin {
-  portalId: string;
-  username: string;
-  password: string;
+// The portal server reads the same fixture; never import this module into client code.
+export const DEMO_VERSION = fixture.version;
+export const DEMO_PORTALS: Portal[] = fixture.portals.map(({ id, name, url, notes }) => ({ id, name, url, notes }));
+export const DEMO_LOGINS = fixture.portals.map(({ id: portalId, username, password }) => ({ portalId, username, password }));
+export const DEMO_LEDGER: LedgerEntry[] = fixture.ledger;
+
+export function demoMemory(): MemoryNode[] {
+  const now = Date.now();
+  const n = (key: string, kind: MemoryNode["kind"], title: string, detail: string, links: string[] = []): MemoryNode => ({
+    id: `mem_${key}`, kind, title, detail, links: links.map((l) => `mem_${l}`), source: "user", createdAt: now, updatedAt: now,
+  });
+  return [
+    n("close", "date", "Month-end close", "The October 2026 close is due October 30. Use October 1–31 as the document period, including related payment and credit activity."),
+    n("northwind", "vendor", "Northwind Office Supply", "Invoice history is paginated. Check statements as well as invoices.", ["close"]),
+    n("contoso", "vendor", "Contoso Freight Lines", "Freight bills, purchase orders and proof of delivery have separate searches. Dates use MM/DD/YYYY.", ["close"]),
+    n("acme", "vendor", "Acme Industrial Parts", "A remittance notice appears after sign-in. Acknowledging a notice is not authorization to change bank details.", ["close", "bank"]),
+    n("ap", "rule", "Reconcile payments and credits", "Calculate an invoice's remaining balance using distinct bank payment references and applied credits. A partial payment is not a settled invoice.", ["close", "acme"]),
+    n("evidence", "rule", "Supporting evidence", "A PO authorizes a purchase; it is not a vendor invoice. Account statements summarize invoices and must not be counted as additional purchases.", ["contoso", "northwind"]),
+    n("allocation", "rule", "Warehouse allocation", "If an invoice could match both Chicago and Joliet maintenance accruals, ask me which warehouse received the goods before choosing a ledger entry. Do not guess from equal amounts.", ["acme"]),
+    n("bank", "rule", "Bank change approval", "Keep supplier bank changes on hold until the finance team verifies them by an established contact. Record the notice for review; do not change payment details.", ["close"]),
+    n("watch", "invoice", "AC-INV-2315", "The pneumatic-cylinder order was awaiting payment confirmation. Find the current receipt and any return credit before reporting its balance.", ["acme", "ap"]),
+    n("handoff", "note", "Close handoff", "Leave documents available for human approval. Include evidence links, missing invoices and unresolved decisions in the final handoff.", ["close", "evidence"]),
+  ];
 }
-
-// The three sandbox vendors are served from inside the Sailbox (sailbox/portals.py).
-export const DEMO_PORTALS: Portal[] = [
-  {
-    id: "northwind",
-    name: "Northwind Office Supply",
-    url: "http://127.0.0.1:8080/northwind/",
-    notes: "Office supplies. Customer extranet; invoices as PDF.",
-  },
-  {
-    id: "contoso",
-    name: "Contoso Freight Lines",
-    url: "http://127.0.0.1:8080/contoso/",
-    notes: "Freight carrier. The login is an account number and a PIN.",
-  },
-  {
-    id: "acme",
-    name: "Acme Industrial Parts",
-    url: "http://127.0.0.1:8080/acme/",
-    notes: "Industrial parts. Invoices, payment receipts and credit memos.",
-  },
-];
-
-// Seeded into the vault (encrypted) on first start so the demo runs unattended.
-export const DEMO_LOGINS: DemoLogin[] = [
-  { portalId: "northwind", username: "apclerk", password: "Northwind#2004" },
-  { portalId: "contoso", username: "CF-88213", password: "4417" },
-  { portalId: "acme", username: "bbs_ap", password: "acme-ap-77" },
-];
-
-export const DEMO_LEDGER: LedgerEntry[] = [
-  { id: "L-1001", date: "2026-10-03", vendor: "Northwind Office Supply", description: "Copy paper and toner", amount: 643.18, poNumber: "PO-5521" },
-  { id: "L-1002", date: "2026-10-09", vendor: "Northwind Office Supply", description: "Task chairs (5) and chair mat", amount: 1284.5, poNumber: "PO-5534" },
-  { id: "L-1003", date: "2026-10-17", vendor: "Northwind Office Supply", description: "Cross-cut shredder", amount: 389.0, poNumber: "PO-5540" },
-  { id: "L-1004", date: "2026-10-24", vendor: "Northwind Office Supply", description: "Laptop docking stations (9)", amount: 2115.75, poNumber: "PO-5549" },
-  { id: "L-1005", date: "2026-10-06", vendor: "Contoso Freight Lines", description: "Freight, FTL to Atlanta", amount: 1870.0, poNumber: "PO-5528" },
-  { id: "L-1006", date: "2026-10-14", vendor: "Contoso Freight Lines", description: "Freight, LTL to St. Louis", amount: 945.3, poNumber: "PO-5537" },
-  { id: "L-1007", date: "2026-10-27", vendor: "Contoso Freight Lines", description: "Freight, LTL 4 pallets", amount: 1210.0, poNumber: "PO-5552" },
-  { id: "L-1008", date: "2026-10-02", vendor: "Acme Industrial Parts", description: "Hydraulic fittings and hoses", amount: 3480.0, poNumber: "PO-5519" },
-  { id: "L-1009", date: "2026-10-15", vendor: "Acme Industrial Parts", description: "Bearings and shaft collars", amount: 760.4, poNumber: "PO-5538" },
-  { id: "L-1010", date: "2026-10-21", vendor: "Acme Industrial Parts", description: "Pneumatic cylinders", amount: 1125.0, poNumber: "PO-5546" },
-];

@@ -17,7 +17,6 @@ export const env = {
   awsKeys: () => Boolean(pick("AWS_ACCESS_KEY_ID") && pick("AWS_SECRET_ACCESS_KEY")) || Boolean(pick("AWS_PROFILE")),
   awsRegion: () => pick("AWS_REGION", "AWS_DEFAULT_REGION") ?? "us-east-1",
   sailApp: () => pick("SAIL_APP") ?? "ledger-agent",
-  dataDir: () => pick("AGENT_DATA_DIR") ?? `${process.cwd()}/.data`,
   supabaseUrl: () => pick("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
   supabaseKey: () => pick("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE"),
   supabaseDbUrl: () => pick("SUPABASE_DB_URL", "DATABASE_URL"),

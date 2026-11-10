@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Px } from "./pixel-icon";
+import { Icon } from "./icon";
 import { api, docTypeLabel, money, shortDate } from "@/lib/client/api";
+import { reconcile, type LedgerState as State } from "@/lib/client/ledger";
 import type { FinancialDocument, LedgerEntry } from "@/lib/types";
-import { AsciiBar, Button, Odometer, PageHeader, Panel, Pill, type Tone, cx } from "./ui";
+import { Button, Meter, Odometer, PageHeader, Panel, Pill, type Tone, cx } from "./ui";
 import { useWorkspace } from "./workspace-provider";
-
-type State = "matched" | "review" | "missing";
 
 const STATE: Record<State, [string, Tone]> = {
   matched: ["Matched", "green"],
@@ -29,16 +28,7 @@ export function LedgerView() {
     if (entry) document.getElementById(`entry-${entry}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [params]);
 
-  const rows = data.ledger.map((e) => {
-    const docs = data.documents.filter((d) => d.ledgerId === e.id && d.status !== "rejected");
-    const issues = data.issues.filter((i) => i.ledgerId === e.id && i.status === "open");
-    const state: State = !docs.length
-      ? "missing"
-      : issues.length || docs.some((d) => d.status === "needs_review" || d.status === "extracted")
-        ? "review"
-        : "matched";
-    return { entry: e, docs, issues, state };
-  });
+  const rows = reconcile(data);
   const unlinked = data.documents.filter((d) => !d.ledgerId && d.status !== "rejected" && d.type !== "purchase_order");
   const count = (s: State) => rows.filter((r) => r.state === s).length;
   const coverage = rows.length ? Math.round((100 * (rows.length - count("missing"))) / rows.length) : 0;
@@ -62,7 +52,7 @@ export function LedgerView() {
           <>
             <input ref={file} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => e.target.files?.[0] && void importCsv(e.target.files[0])} />
             <Button onClick={() => file.current?.click()}>
-              <Px name="upload" />
+              <Icon name="upload" />
               Import ledger CSV
             </Button>
           </>
@@ -102,11 +92,11 @@ export function LedgerView() {
 
       {unlinked.length ? (
         <div className="px-8 pt-8">
-          <p className="mb-1 text-[20px] font-semibold tracking-[-0.03em] text-zinc-900">Documents without a ledger transaction</p>
+          <p className="display mb-1.5 text-[26px] text-zinc-900">Documents without a ledger transaction</p>
           <p className="mb-3 text-[13px] text-zinc-500">Possible unrecorded liabilities or payments to reconcile.</p>
           <Panel className="p-1.5">
             {unlinked.map((d) => (
-              <Link key={d.id} href={`/documents?doc=${d.id}`} className="flex items-center gap-4 rounded-lg px-3 py-2.5 text-[13px] transition-colors hover:bg-zinc-900/[0.03]">
+              <Link key={d.id} href={`/documents?doc=${d.id}`} className="row flex items-center gap-4 rounded-[10px] px-3 py-2.5 text-[13px]">
                 <span className="w-40 font-medium text-zinc-900">{d.number}</span>
                 <span className="w-28 text-zinc-500">{docTypeLabel[d.type]}</span>
                 <span className="flex-1 text-zinc-700">{d.vendor}</span>
@@ -139,18 +129,18 @@ function Row({
   const [label, tone] = STATE[state];
   return (
     <>
-      <tr id={`entry-${entry.id}`} onClick={toggle} className={cx("cursor-pointer transition-colors ", open ? "bg-zinc-900/[0.04]" : "hover:bg-zinc-900/[0.03]")}>
+      <tr id={`entry-${entry.id}`} onClick={toggle} className={cx("cursor-pointer transition-colors [&>td:first-child]:rounded-l-[10px] [&>td:last-child]:rounded-r-[10px]", open ? "bg-zinc-900/[0.08]" : "hover:bg-zinc-900/[0.05]")}>
         <td className="px-3 py-2.5">
           <p className="font-medium text-zinc-900">{entry.description}</p>
-          <p className="text-[12px] text-zinc-400">{entry.id}{entry.reference ? ` · ${entry.reference}` : ""}</p>
+          <p className="tabular text-[12px] text-zinc-500">{entry.id}{entry.reference ? `, ref ${entry.reference}` : ""}</p>
         </td>
         <td className="px-3 py-2.5 text-zinc-700">{entry.vendor}</td>
         <td className="tabular px-3 py-2.5 text-zinc-600">{shortDate(entry.date)}</td>
-        <td className="px-3 py-2.5 font-mono text-[12px] text-zinc-500">{entry.poNumber ?? "—"}</td>
+        <td className="tabular px-3 py-2.5 whitespace-nowrap text-zinc-500">{entry.poNumber ?? ""}</td>
         <td className="tabular px-3 py-2.5 text-right font-medium text-zinc-900">{money(entry.amount)}</td>
-        <td className="px-3 py-2.5 text-zinc-600">{docs.length ? docs.map((d) => d.number).join(", ") : "—"}</td>
+        <td className="px-3 py-2.5 text-zinc-600">{docs.length ? docs.map((d) => d.number).join(", ") : <span className="text-zinc-400">None yet</span>}</td>
         <td className="px-3 py-2.5">
-          <Pill tone={tone}>{issues ? `${label} · ${issues}` : label}</Pill>
+          <Pill tone={tone}>{issues ? `${label}, ${issues} ${issues === 1 ? "issue" : "issues"}` : label}</Pill>
         </td>
       </tr>
       {open && docs.length ? (
@@ -160,7 +150,7 @@ function Row({
               {docs.map((d) => {
                 const diff = d.type === "invoice" && d.amount !== undefined ? d.amount - entry.amount : 0;
                 return (
-                  <Link key={d.id} href={`/documents?doc=${d.id}`} className="rounded-lg bg-zinc-900/[0.04] px-3 py-2 text-[12.5px] transition-colors hover:bg-zinc-900/[0.07]">
+                  <Link key={d.id} href={`/documents?doc=${d.id}`} className="rise rounded-[10px] bg-zinc-900/[0.07] px-3 py-2 text-[12.5px] transition-colors hover:bg-zinc-900/[0.12]">
                     <span className="font-medium text-zinc-900">{docTypeLabel[d.type]} {d.number}</span>
                     <span className="tabular ml-2 text-zinc-600">{money(d.amount, d.currency)}</span>
                     {Math.abs(diff) > 0.01 ? <span className="tabular ml-2 text-amber-700">{diff > 0 ? "+" : ""}{money(diff)}</span> : null}
@@ -177,10 +167,10 @@ function Row({
 
 function Metric({ label, value, tone, bar }: { label: string; value: string | number; tone?: "amber"; bar?: number }) {
   return (
-    <Panel className="px-4 py-4">
+    <Panel className="px-5 pt-4 pb-5">
       <p className="eyebrow">{label}</p>
-      <Odometer value={typeof value === "number" ? String(value).padStart(2, "0") : value} className={cx("mt-3 text-[28px] font-semibold tracking-[-0.04em]", tone === "amber" ? "text-amber-700" : "text-zinc-900")} />
-      {bar !== undefined ? <AsciiBar value={bar} width={22} className="mt-3 flex" /> : null}
+      <Odometer value={typeof value === "number" ? String(value).padStart(2, "0") : value} className={cx("display mt-3 text-[44px]", tone === "amber" ? "text-amber-600" : "text-zinc-950")} />
+      {bar !== undefined ? <Meter value={bar} className="mt-3.5" /> : null}
     </Panel>
   );
 }

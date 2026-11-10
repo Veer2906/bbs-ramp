@@ -9,15 +9,15 @@ const refHref = (kind: string, id: string) =>
 
 const components: Components = {
   p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0">{children}</p>,
-  strong: ({ children }) => <strong className="font-semibold text-zinc-900">{children}</strong>,
+  strong: ({ children }) => <strong className="font-semibold text-zinc-950">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
   ul: ({ children }) => <ul className="my-2 flex list-disc flex-col gap-1 pl-5 marker:text-zinc-400 first:mt-0 last:mb-0">{children}</ul>,
   ol: ({ children }) => <ol className="my-2 flex list-decimal flex-col gap-1 pl-5 marker:text-zinc-400 first:mt-0 last:mb-0">{children}</ol>,
   li: ({ children }) => <li className="pl-0.5">{children}</li>,
-  h1: ({ children }) => <p className="mt-4 mb-1.5 font-semibold text-zinc-900 first:mt-0">{children}</p>,
-  h2: ({ children }) => <p className="mt-4 mb-1.5 font-semibold text-zinc-900 first:mt-0">{children}</p>,
-  h3: ({ children }) => <p className="mt-3 mb-1 font-semibold text-zinc-900 first:mt-0">{children}</p>,
-  code: ({ children }) => <code className="bg-zinc-900/[0.06] px-1 py-px font-mono text-[0.88em]">{children}</code>,
+  h1: ({ children }) => <p className="display mt-5 mb-2 text-[24px] text-zinc-950 first:mt-0">{children}</p>,
+  h2: ({ children }) => <p className="display mt-5 mb-1.5 text-[21px] text-zinc-950 first:mt-0">{children}</p>,
+  h3: ({ children }) => <p className="mt-4 mb-1 font-semibold text-zinc-950 first:mt-0">{children}</p>,
+  code: ({ children }) => <code className="rounded-[5px] bg-zinc-900/[0.09] px-1 py-px font-mono text-[0.86em]">{children}</code>,
   a: ({ children, href }) => {
     const m = href?.match(REF);
     if (m)
@@ -37,8 +37,8 @@ const components: Components = {
       <table className="w-full text-left text-[13px] tabular-nums">{children}</table>
     </div>
   ),
-  th: ({ children }) => <th className="bg-zinc-900/[0.04] px-2 py-1 font-medium text-zinc-600">{children}</th>,
-  td: ({ children }) => <td className="px-2 py-1 align-top">{children}</td>,
+  th: ({ children }) => <th className="bg-zinc-900/[0.07] px-2.5 py-1.5 font-medium text-zinc-700 first:rounded-l-lg last:rounded-r-lg">{children}</th>,
+  td: ({ children }) => <td className="px-2.5 py-1.5 align-top">{children}</td>,
   hr: () => <div className="h-3" />,
 };
 

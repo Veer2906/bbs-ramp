@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Px } from "./pixel-icon";
+import { Icon } from "./icon";
 import { api, ago, type VaultDraft } from "@/lib/client/api";
 import type { PublicVaultEntry, VaultStatus } from "@/lib/types";
 import { Button, Empty, PageHeader, Panel, Pill, inputClass } from "./ui";
@@ -29,18 +29,18 @@ export function VaultView() {
   }, [load]);
 
   return (
-    <div className="scroll-thin h-full overflow-y-auto pb-16">
+    <div className="scroll-thin flex h-full flex-col overflow-y-auto pb-8">
       <PageHeader
         title="Vault"
-        subtitle="Logins the agent signs in with. Passwords are encrypted before they are stored, and the agent types them without ever seeing them."
+        subtitle="Logins the agent signs in with. Each password is encrypted before it is saved. The agent can type it into a login page but cannot read it."
         actions={
           <Button variant="primary" onClick={() => setEditing("new")} disabled={editing === "new"}>
-            <Px name="plus" />
+            <Icon name="plus" size={15} />
             Add login
           </Button>
         }
       />
-      <div className="flex max-w-[760px] flex-col gap-3 px-8">
+      <div className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-3 px-5 sm:px-8">
         {status ? <StatusLine status={status} /> : null}
         {error ? <p className="text-[13px] text-rose-600">{error}</p> : null}
         {editing === "new" ? (
@@ -54,7 +54,9 @@ export function VaultView() {
           />
         ) : null}
         {entries?.length === 0 && editing !== "new" ? (
-          <Empty title="No saved logins" hint="Add one now, or the agent will ask for it the first time it reaches a login page." />
+          <div className="flex flex-1 items-center justify-center">
+            <Empty title="No saved logins" hint="Add one now, or the agent will ask for it the first time it reaches a login page." />
+          </div>
         ) : null}
         {entries?.map((e) =>
           editing === e.id ? (
@@ -76,18 +78,18 @@ export function VaultView() {
             />
           ) : (
             <Panel key={e.id} className="flex items-center gap-4 px-5 py-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900/[0.04] font-mono text-[12px] text-zinc-500">
-                <Px name="key" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-zinc-900/[0.07] text-zinc-600">
+                <Icon name="key" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-medium text-zinc-900">{e.name}</p>
-                <p className="truncate text-[12.5px] text-zinc-500">
-                  {e.username || "No username"}
-                  {e.url ? <span className="text-zinc-400">{`  ·  ${e.url.replace(/^https?:\/\//, "")}`}</span> : null}
+                <p className="flex gap-3 truncate text-[12.5px] text-zinc-500">
+                  <span>{e.username || "No username"}</span>
+                  {e.url ? <span className="truncate text-zinc-400">{e.url.replace(/^https?:\/\//, "")}</span> : null}
                 </p>
               </div>
-              <span className="hidden font-mono text-[10.5px] tracking-wide text-zinc-400 uppercase sm:block">{e.lastUsedAt ? `Used ${ago(e.lastUsedAt)}` : "Not used yet"}</span>
-              {!e.hasPassword && <Pill tone="amber">No password</Pill>}
+              <span className="hidden text-[12px] text-zinc-400 sm:block">{e.lastUsedAt ? `Used ${ago(e.lastUsedAt)}` : "Not used yet"}</span>
+              {e.hasPassword ? <Pill tone="green">Encrypted</Pill> : <Pill tone="amber">No password</Pill>}
               <Button size="sm" variant="ghost" onClick={() => setEditing(e.id)}>
                 Edit
               </Button>
@@ -100,20 +102,12 @@ export function VaultView() {
 }
 
 function StatusLine({ status }: { status: VaultStatus }) {
-  const where = status.storage === "supabase" ? "Stored in Supabase" : "Stored on this computer";
-  const key = status.keySource === "env" ? "key from VAULT_KEY" : "key generated in .data/vault.key";
+  if (status.keyOk) return null;
   return (
     <div className="mb-2 flex flex-col gap-1">
-      <p className="font-mono text-[11px] tracking-wide text-zinc-500">{`${status.cipher} · ${key} · ${where.toLowerCase()}`}</p>
-      {!status.keyOk ? (
-        <p className="rounded-lg bg-rose-500/[0.07] px-3 py-2 text-[12.5px] text-rose-800">
-          The current key cannot decrypt the saved passwords. Set VAULT_KEY to the key they were saved with, or re-enter the passwords.
-        </p>
-      ) : status.keySource === "file" && status.storage === "supabase" ? (
-        <p className="rounded-lg bg-amber-500/[0.08] px-3 py-2 text-[12.5px] text-amber-900">
-          Passwords are in Supabase but the key only exists on this computer. Copy .data/vault.key into VAULT_KEY in .env.local so other machines can use the vault.
-        </p>
-      ) : null}
+      <p className="rounded-[10px] bg-rose-500/[0.12] px-3 py-2 text-[12.5px] text-rose-800">
+        VAULT_KEY is missing or cannot decrypt the saved passwords. Set it in .env.local to the key the passwords were saved with, or re-enter the passwords.
+      </p>
     </div>
   );
 }
@@ -123,6 +117,7 @@ export function EntryForm({
   initial,
   submitLabel = "Save",
   usernameLabel = "Username",
+  bare,
   onSave,
   onCancel,
   onDelete,
@@ -131,6 +126,8 @@ export function EntryForm({
   initial?: VaultDraft;
   submitLabel?: string;
   usernameLabel?: string;
+  /** Render without the surrounding Panel, for embedding inside another card. */
+  bare?: boolean;
   onSave: (d: VaultDraft) => Promise<void>;
   onCancel?: () => void;
   onDelete?: () => Promise<void>;
@@ -154,8 +151,7 @@ export function EntryForm({
     }
   };
 
-  return (
-    <Panel className="p-5">
+  const form = (
       <form onSubmit={(e) => void submit(e)} className="grid grid-cols-2 gap-3" autoComplete="off">
         <Field label="Name">
           <input className={inputClass} value={d.name} onChange={set("name")} placeholder="Vendor name" />
@@ -194,8 +190,8 @@ export function EntryForm({
           ) : null}
         </div>
       </form>
-    </Panel>
   );
+  return bare ? form : <Panel className="p-5">{form}</Panel>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
