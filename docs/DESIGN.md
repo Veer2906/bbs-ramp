@@ -5,7 +5,7 @@ Sailboxes are persistent VMs with a filesystem that survives sleep ([docs](https
 
 The server talks to Sail over raw HTTP (`lib/server/sail.ts`) instead of `@sailresearch/sdk` because the SDK requires Node 22+ and the HTTP API is small (create, get, resume, exec, files).
 
-The runtime files are hashed; when they change the server re-uploads them and re-runs `bootstrap.sh`, so updating the browser code needs no manual step. The Sailbox id is stored in `.data/sailbox.json` and reused; a terminated box is replaced automatically.
+The runtime files are hashed; when they change the server re-uploads them and re-runs `bootstrap.sh`, so updating the browser code needs no manual step. The Sailbox id is stored in the `app_state` table and reused; a terminated box is replaced automatically.
 
 ## Text snapshots with element refs, screenshots on demand
 Each browser action returns a compact text snapshot of the page (all frames, including framesets) where interactive elements are numbered `[12 link "PDF"]`. The model acts on refs, which is far cheaper and faster than vision on every step and works well on table-heavy legacy pages. A `screenshot` tool exists for pages the text can't describe. Screenshots are still captured on every step for the live view in the UI, but are not sent to the model.
@@ -22,7 +22,7 @@ Each browser action returns a compact text snapshot of the page (all frames, inc
 Both go through the Anthropic TypeScript SDK's Messages interface: `@anthropic-ai/sdk` for the API and `@anthropic-ai/bedrock-sdk` for Bedrock (bearer token `AWS_BEARER_TOKEN_BEDROCK` or the standard AWS credential chain). Inference-profile ids such as `global.anthropic.claude-sonnet-4-6` use the InvokeModel client; plain `anthropic.claude-*` ids use the Claude-in-Bedrock (Mantle) client. The model is chosen in Settings; any id can be typed in.
 
 ## Credentials never reach the model: the Vault
-Logins live in the Vault, not in Settings. Each password is encrypted with AES-256-GCM (Node `crypto`, random 12-byte IV, entry id bound as additional authenticated data so ciphertext can't be swapped between entries). The key comes from `VAULT_KEY` or a generated `.data/vault.key` (mode 0600), and is never stored next to the ciphertext, so a leaked database alone doesn't reveal passwords. The UI is write-only: the API returns only `hasPassword`.
+Logins live in the Vault, not in Settings. Each password is encrypted with AES-256-GCM (Node `crypto`, random 12-byte IV, entry id bound as additional authenticated data so ciphertext can't be swapped between entries). The key comes from `VAULT_KEY` (required) and is never stored next to the ciphertext, so a leaked database alone doesn't reveal passwords. The UI is write-only: the API returns only `hasPassword`.
 
 The model sees Vault entries as id, name, URL and username. It calls `fill_credential(vault_id, field, ref)`; the server decrypts and types the value into the Sailbox browser, so secrets never appear in prompts, tool results, logs or run history. When there's no matching entry, or the saved one is rejected, the model calls `request_credentials`; the run pauses and the timeline shows a Vault form. `ask_human` is explicitly not for passwords, and page observations flag password fields with no saved login so the model asks proactively. Skipping a login lets the run continue with other portals and records an access issue.
 
@@ -32,8 +32,8 @@ The model extracts fields from the actual document (`read_document` gives PDF te
 ## Human in the loop
 The agent asks (`ask_human`) only when it is blocked: MFA codes, or a truly ambiguous instruction. Everything else becomes an issue so the run keeps going. Users can also send guidance mid-run; it's injected into the next model turn. Documents can be approved or rejected and issues resolved, or handed back to the agent with "Investigate".
 
-## Storage: Supabase, with local files as fallback
-All persistence goes through one `Backend` interface (`lib/server/db/backend.ts`) with two implementations. `local.ts` keeps JSON files under `.data/`, so `npm run dev` works with no setup. `supabase.ts` is used when `SUPABASE_URL` and a service-role key are set: one table per collection (`ledger_entries`, `documents`, `issues`, `runs`, `vault_entries`, plus `app_state` for settings), and original files in a private `documents` Storage bucket. Rows keep the domain fields as columns so the data is readable in the Supabase table editor and queryable with SQL.
+## Storage: Supabase
+All persistence goes through one `Backend` interface (`lib/server/db/backend.ts`) implemented by `supabase.ts`; `SUPABASE_URL` and a service-role key are required. One table per collection (`ledger_entries`, `documents`, `issues`, `runs`, `vault_entries`, plus `app_state` for settings), and original files in a private `documents` Storage bucket. Rows keep the domain fields as columns so the data is readable in the Supabase table editor and queryable with SQL.
 
 Access is server-only with the service-role key; RLS is enabled with no policies, so the anon key can read nothing. The schema is a plain migration (`supabase/migrations/`); if `SUPABASE_DB_URL` is set the app applies it on start (idempotent `create ... if not exists`), otherwise the storage banner says what to run. Run saves are serialized per run so a slow older write can't overwrite a newer one.
 
@@ -47,3 +47,12 @@ Facts the user wants every task to know (key dates, important invoices, vendor q
 ## Run view: a collapsible thinking tree
 
 Each instruction is shown as a turn: the message, then the agent's notes and actions as one tree hanging off a thin rail, then the summary. While the task runs the tree is open and grows as steps arrive; when it finishes it folds into one line ("Worked for 2m 10s, 24 steps") that can be reopened. Logs stay available without pushing the result off screen.
+
+## Interface: a fresco behind glass
+
+The whole app sits on Raphael's *School of Athens* (`public/athens.webp`), drawn by a small WebGL shader in `components/backdrop.tsx` as a dot matrix: each 4 px cell samples the painting once and draws one dot, coloured by the pigment and sized by its brightness. The painting drifts slowly under the fixed grid, so the dots change in place like a lit sign. It develops from the top-left corner on load, a band of light crosses it on every page change, and dots swell under the pointer. On the home screen it is vivid; on working pages a frosted veil fades in over it so tables and chat stay readable. One canvas lives in the layout, reads the route from `location` each frame, pauses when the tab is hidden, draws a single still frame under `prefers-reduced-motion`, and falls back to a CSS dot mask without WebGL.
+
+Everything else is deliberately quiet: glass cards (`.card`), plaster-white type on ink, Inter for the interface and Cormorant Garamond for headings and large figures. Colour is reserved for status, in four pigment tones (verdigris matched, ochre needs a person, cinnabar failed, lapis approved). The Tailwind zinc scale is inverted in `app/globals.css` (900 is the lightest), so `text-zinc-900` is primary text and `bg-zinc-900/[0.05]` is a faint light wash.
+
+Page changes use React's `<ViewTransition>` (`components/page-transition.tsx`): the old page leaves in 140 ms, the new one settles in behind it, and the sidebar and painting hold still. The home screen has the one staged entrance (`.arrive`); elsewhere motion only answers an action.
+
